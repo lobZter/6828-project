@@ -11,3 +11,29 @@ Changes for env struct:
 - New state ENV_LEASED
 - IP of host env_hostip
 - bool true if env is alien env_alien
+
+Protocol:
+1. Lease Request:
+   Request:
+	a) Env struct
+   Response:
+	No: Retry/Abort
+   	Yes: Receiver has already set up mapping & allocated Env struct. Host needs to get ready to send environment physical pages.
+
+2. Send Page Request:
+   Request:
+	a) env_id
+      	b) va
+      	c) perm
+      	d) chunk id (x/4)
+      	e) data for that chunk
+   Response:
+	Yes: Send next chunk/page
+      	No: Retry/Abort
+
+3. Done Request:
+   Request:
+	a) env_id
+   Response:
+	Yes: Destroy env_id environment. Environment doesn't "return" anything. Only way to communicate information back to parent is via IPC calls.
+	No: Retry/Abort

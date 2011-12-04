@@ -35,7 +35,8 @@ enum {
 	ENV_DYING,
 	ENV_RUNNABLE,
 	ENV_RUNNING,
-	ENV_NOT_RUNNABLE
+	ENV_NOT_RUNNABLE,
+	ENV_LEASED
 };
 
 // Special environment types
@@ -68,6 +69,10 @@ struct Env {
 	uint32_t env_ipc_value;		// Data value sent to us
 	envid_t env_ipc_from;		// envid of the sender
 	int env_ipc_perm;		// Perm of page mapping received
+
+	// Distributed JOS
+	uint32_t env_hostip;            // Host IPv4 address
+	bool env_alien;                 // Alien? From another planet
 };
 
 #endif // !JOS_INC_ENV_H

@@ -207,7 +207,7 @@ fork(void)
 }
 
 // Challenge!
-int
+envid_t
 sfork(void)
 {
 	// LAB 4: Your code here.	

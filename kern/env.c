@@ -14,12 +14,17 @@
 #include <kern/sched.h>
 #include <kern/cpu.h>
 #include <kern/spinlock.h>
+#include <kern/e1000.h>
 
 struct Env *envs = NULL;		// All environments
 static struct Env *env_free_list;	// Free environment list
 					// (linked by Env->env_link)
 
 #define ENVGENSHIFT	12		// >= LOGNENV
+#define HOSTADDRSHIFT   10              // >= LOGNENV
+#define HOSTADDRMASK    0xFFFFF         // Low 20 bits of MAC address
+
+#define debug 0
 
 // Global descriptor table.
 //
@@ -221,7 +226,7 @@ env_setup_vm(struct Env *e)
 int
 env_alloc(struct Env **newenv_store, envid_t parent_id)
 {
-	int32_t generation;
+//	int32_t generation;
 	int r;
 	struct Env *e;
 
@@ -233,10 +238,23 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 		return r;
 
 	// Generate an env_id for this environment.
-	generation = (e->env_id + (1 << ENVGENSHIFT)) & ~(NENV - 1);
+/*	generation = (e->env_id + (1 << ENVGENSHIFT)) & ~(NENV - 1);
 	if (generation <= 0)	// Don't create a negative env_id.
 		generation = 1 << ENVGENSHIFT;
 	e->env_id = generation | (e - envs);
+*/
+
+	// Generate env_id for distributed JOS
+	e->env_id = (e - envs); // Lower LOGNENV bits
+	e->env_id |= (e1000[E1000_RAL] & HOSTADDRMASK) << HOSTADDRSHIFT;
+
+	if (e->env_id < 0) {
+		panic("env_alloc: env_id should be >= 0\n");
+	}
+
+	if (debug) {
+		cprintf("env_alloc: %x\n", e->env_id);
+	}
 
 	// Set the basic status variables.
 	e->env_parent_id = parent_id;
@@ -532,7 +550,6 @@ env_pop_tf(struct Trapframe *tf)
 {
 	// Record the CPU we are running on for user-space debugging
 	curenv->env_cpunum = cpunum();
-	//unlock_kernel();
 
 	__asm __volatile("movl %0,%%esp\n"
 		"\tpopal\n"
