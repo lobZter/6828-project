@@ -1,1 +1,13 @@
 Writeup here
+
+Changes for adding mac address in envid:
+env.c - alloc_env
+removed generationid, set envid = (e-envs), this leaves us with 21 bits for the mac address (we can't use the highest bit), but we only use 20 (11th thru 29th).
+
+Mapping envid accross distributed CPUs:
+If a CPU receives an envid that is not available, it is mapped to an unused local envid. This mapping is maintained in a fixed-size array (this limits the number of tasks that can be shared, but we will make this number configurable).
+
+Changes for env struct:
+- New state ENV_LEASED
+- IP of host env_hostip
+- bool true if env is alien env_alien
