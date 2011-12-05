@@ -139,7 +139,6 @@ include user/Makefrag
 include fs/Makefrag
 include net/Makefrag
 
-
 CPUS ?= 1
 
 PORT7	:= $(shell expr $(GDBPORT) + 1)

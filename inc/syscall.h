@@ -22,6 +22,8 @@ enum {
 	SYS_net_try_send,
 	SYS_net_try_receive,
 	SYS_get_mac,
+	SYS_env_lease,
+	SYS_copy_mem,
 	NSYSCALLS
 };
 

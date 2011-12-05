@@ -146,3 +146,15 @@ sys_get_mac(uint32_t *low, uint32_t *high)
 {
 	return syscall(SYS_get_mac, 1, (uint32_t) low, (uint32_t) high, 0, 0, 0);
 }
+
+int
+sys_env_lease(struct Env* src, envid_t *dst_id)
+{
+	return syscall(SYS_env_lease, 1, (uint32_t) src, (uint32_t) dst_id, 0, 0, 0);
+}
+
+int
+sys_copy_mem(envid_t dst_id, void *dst, void *src)
+{
+	return syscall(SYS_copy_mem, 1, (uint32_t) dst_id, (uint32_t) dst, (uint32_t) src, 0, 0);
+}

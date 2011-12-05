@@ -1,0 +1,18 @@
+// C code for echoing own struct Env
+
+if (debug) {                                                    
+        buffer[0] = 0;                                          
+        struct Env *e = (struct Env *) (buffer + 1);            
+        memmove(buffer + 1, (void *) thisenv,                   
+                sizeof(struct Env));                            
+        e->env_status = ENV_LEASED;                             
+        cprintf("Sending struct Env: \n"                         
+                "  env_id: %x\n"                                
+                "  env_parent_id: %x\n"                         
+                "  env_status: %x\n"                            
+                "  env_hostip: %x\n",                           
+                e->env_id, e->env_parent_id,                    
+                e->env_status, e->env_hostip);                  
+        write(sock, buffer, 1 + sizeof(struct Env));            
+        break;                                                  
+}             

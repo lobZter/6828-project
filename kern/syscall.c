@@ -533,6 +533,59 @@ sys_get_mac(uint32_t *low, uint32_t *high)
 	return 0;
 }
 
+// DJOS syscalls
+static int
+sys_env_lease(struct Env *src, envid_t *dst_id) 
+{
+	int r;
+	struct Env* e;
+
+	if ((r = env_alloc(&e, src->env_parent_id)) < 0) {
+		return r;
+	}
+
+	/* No need to copy link, id, type, cpunum, pgdir */
+
+	e->env_tf = src->env_tf;
+	e->env_parent_id = src->env_parent_id;
+
+	e->env_status = src->env_status;
+	e->env_runs = src->env_runs;
+
+	e->env_pgfault_upcall = src->env_pgfault_upcall;
+
+	e->env_ipc_recving = src->env_ipc_recving;
+	e->env_ipc_dstva = src->env_ipc_dstva;
+	e->env_ipc_value = src->env_ipc_value;
+	e->env_ipc_from = src->env_ipc_from;
+	e->env_ipc_perm = src->env_ipc_perm;
+
+	e->env_hostip = src->env_hostip;
+	e->env_alien = 1; // Mark as alien
+
+	*dst_id = e->env_id;
+
+	return 0;
+}
+
+int // Only copies 1024 bytes!
+sys_copy_mem(envid_t dst_id, void* dst, void* src)
+{
+	void *addr;
+
+	if (sys_page_map(curenv->env_id, (void *) UTEMP, dst_id, dst, 
+			 PTE_U | PTE_P| PTE_W) < 0)
+		return -E_INVAL;
+
+	addr = (void *) (UTEMP + PGOFF(dst));
+	memmove(addr, src, 1024);
+
+	if (sys_page_unmap(curenv->env_id, (void *) UTEMP) < 0)
+		return -E_INVAL;
+	
+	return 0;
+}
+
 // Dispatches to the correct kernel function, passing the arguments.
 int32_t
 syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, uint32_t a5)
@@ -582,6 +635,10 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		return sys_net_try_receive((char *) a1, (int *) a2);
 	case SYS_get_mac:
 		return sys_get_mac((uint32_t *) a1, (uint32_t *) a2);
+	case SYS_env_lease:
+		return sys_env_lease((struct Env*) a1, (envid_t *) a2);
+	case SYS_copy_mem:
+		return sys_copy_mem((envid_t) a1, (void *) a2, (void *) a3);
 	default:
 		return -E_INVAL;
 	}

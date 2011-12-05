@@ -64,6 +64,8 @@ int 	sys_env_swap(envid_t envid);
 int     sys_net_try_send(char *data, int len);
 int     sys_net_try_receive(char *data, int *len);
 int     sys_get_mac(uint32_t *low, uint32_t *high);
+int     sys_env_lease(struct Env* src, envid_t *dst_id);
+int     sys_copy_mem(envid_t dst_id, void *dst, void* src);
 
 // This must be inlined.  Exercise for reader: why?
 static __inline envid_t __attribute__((always_inline))
