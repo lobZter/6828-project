@@ -1,0 +1,44 @@
+void                                                                            
+send_inet_req()                                                                 
+{                                                                               
+        int r;                                                                  
+        int clientsock;                                                         
+        struct sockaddr_in client;                                              
+        char buffer[BUFFSIZE];                                                  
+                                                                                
+        if ((clientsock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)       
+                die("Doomed!");                                                 
+                                                                                
+        memset(&client, 0, sizeof(client));             // Clear struct         
+        client.sin_family = AF_INET;                    // Internet/IP          
+        client.sin_addr.s_addr = htonl(0x12091645);     // 18.9.22.69           
+        client.sin_port = htons(80);                    // client port          
+                                                                                
+        cprintf("Connecting to MIT...\n");                                      
+                                                                                
+        if ((r = connect(clientsock, (struct sockaddr *) &client,               
+                         sizeof(client))) < 0)                                  
+                die("Connection to MIT server failed!");                        
+                                                                                
+        cprintf("Sending request to MIT...\n");                                 
+        r = snprintf(buffer, BUFFSIZE, "GET /usmanm/Public/ HTTP/1.1\r\n" 
+                     "Host: web.mit.edu\r\n" "\r\n");                           
+                                                                                
+        if ((r = write(clientsock, buffer, r)) < 0)                             
+                die("Request to MIT failed...\n");                              
+                                                                                
+        while (1)                                                               
+        {                                                                       
+                cprintf("Waiting for response from MIT...\n");                  
+                // Receive message                                              
+                if ((r = read(clientsock, buffer, BUFFSIZE)) < 0)               
+                        panic("failed to read");                                
+                                                                                
+                cprintf("Received: %s\n", buffer);                              
+                                                                                
+                // no keep alive                                                
+                break;                                                          
+        }                                                                       
+                                                                                
+        close(clientsock);       
+}  
