@@ -18,7 +18,9 @@ input(envid_t ns_envid)
 	int len, r, i;
 
 	while (1) {
-		while ((r = sys_net_try_receive(buf, &len)) < 0);
+		while ((r = sys_net_try_receive(buf, &len)) < 0) {
+			sys_yield();
+		}
 
 		// Whenever a new page is allocated, old will be deallocated
 		// by page_insert automatically.

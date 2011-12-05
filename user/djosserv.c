@@ -237,6 +237,9 @@ handle_client(int sock)
 	char buffer[BUFFSIZE];
 	int received = -1;
 
+	// Clear buffer
+	memset(buffer, 0, BUFFSIZE);
+
 	while (1)
 	{
 		// Receive message
