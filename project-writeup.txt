@@ -38,6 +38,12 @@ Protocol:
 	Yes: Destroy env_id environment. Environment doesn't "return" anything. Only way to communicate information back to parent is via IPC calls.
 	No: Retry/Abort
 
+4. Abort Request:
+   Request:
+	a) env_id
+   Response:
+	Yes.
+
 Protocol grammar:
 
 Req 1 Buffer
@@ -48,6 +54,9 @@ Req 2 Buffer
 
 Req 3 Buffer
 2, envid_t
+
+Req 4 Buffer
+3, envid_t
 
 Response
 int status, envid_t envid

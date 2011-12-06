@@ -13,7 +13,8 @@
 
 #define LEASE 0
 #define PAGE 1
-#define DONE 2
+#define DONE_LEASE 2
+#define ABORT_LEASE 3
 
 // New error codes (reuse E_NO_MEM)
 #define E_BAD_REQ 200
@@ -50,6 +51,22 @@ find_lease(envid_t src_id)
 		}
 	}
 	return -1;
+}
+
+void
+destroy_lease(envid_t env_id)
+{
+	int i;
+	i = find_lease(env_id);
+
+	if (i == -1) return;
+
+	// Destroy leased env
+	sys_env_destroy(lease_map[i].dst);
+
+	// Clear lease_map entry
+	lease_map[i].src = 0;
+	lease_map[i].dst = 0;
 }
 
 int
@@ -95,7 +112,7 @@ process_lease(char *buffer)
 
 	// Set parent_id of env to self (doesn't have notion of parent_id
 	// anymore
-	req_env.env_parent_id = thisenv->env_parent_id;	
+	req_env.env_parent_id = thisenv->env_id;	
 
 	// If there is any free env, copy over request env.
 	if (sys_env_lease(&req_env, &dst_id)) {
@@ -164,7 +181,7 @@ process_page_req(char *buffer)
 }
 
 int
-process_done(char *buffer)
+process_done_lease(char *buffer)
 {
 	int i;
 	envid_t src_id;
@@ -189,6 +206,20 @@ process_done(char *buffer)
 }
 
 int
+process_abort_lease(char *buffer)
+{
+	int i;
+	envid_t src_id;
+
+	// Destroy lease
+	src_id = *((envid_t *) buffer);
+	destroy_lease(src_id);
+
+	return 0;
+}
+
+
+int
 process_request(char *buffer)
 {
 	char req_type;
@@ -207,8 +238,10 @@ process_request(char *buffer)
 		return process_lease(buffer);
 	case PAGE:
 		return process_page_req(buffer);
-	case DONE:
-		return process_done(buffer);
+	case DONE_LEASE:
+		return process_done_lease(buffer);
+	case ABORT_LEASE:
+		return process_abort_lease(buffer);
 	default:
 		return -E_BAD_REQ;
 	}
@@ -222,6 +255,11 @@ issue_reply(int sock, int status, envid_t env_id)
 	// For now only send status code back
 	if (debug) {
 		cprintf("Sending response: %d, %x\n", status, env_id);
+	}
+
+	// If failure occurred, unlease env_id
+	if (status == -E_FAIL) {
+		destroy_lease(env_id);
 	}
 
 	char buf[sizeof(int) + sizeof(envid_t)];
