@@ -11,8 +11,8 @@
 
 #define LEASES (sizeof(lease_map)/sizeof(struct lease_entry)) // # of leases
 
-#define LEASE 0
-#define PAGE 1
+#define PAGE_REQ 0
+#define START_LEASE 1
 #define DONE_LEASE 2
 #define ABORT_LEASE 3
 
@@ -70,7 +70,7 @@ destroy_lease(envid_t env_id)
 }
 
 int
-process_lease(char *buffer)
+process_start_lease(char *buffer)
 {
 	int i, entry;
 	struct Env req_env;
@@ -234,10 +234,10 @@ process_request(char *buffer)
 	}
 
 	switch(req_type) {
-	case LEASE:
-		return process_lease(buffer);
-	case PAGE:
+	case PAGE_REQ:
 		return process_page_req(buffer);
+	case START_LEASE:
+		return process_start_lease(buffer);
 	case DONE_LEASE:
 		return process_done_lease(buffer);
 	case ABORT_LEASE:
