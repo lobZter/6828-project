@@ -196,7 +196,7 @@ send_inet_req()
                                                                                 
         memset(&client, 0, sizeof(client));             // Clear struct
         client.sin_family = AF_INET;                    // Internet/IP
-        client.sin_addr.s_addr = htonl(0x7f000001);     // 18.9.22.69
+        client.sin_addr.s_addr = htonl(0x7f000001);     // 127.0.0.1
         client.sin_port = htons(26001);                    // client port
 
         cprintf("Connecting to ...\n");                                      
