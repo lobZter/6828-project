@@ -9,7 +9,7 @@
 #define BUFFSIZE 1518   // Max packet size
 #define MAXPENDING 5    // Max connection requests
 
-#define LEASES (sizeof(lease_map)/sizeof(struct lease_entry)) // # of leases
+#define LEASES 5 // # of leases
 
 #define PAGE_REQ 0
 #define START_LEASE 1
@@ -21,18 +21,19 @@
 #define E_NO_LEASE 201
 #define E_FAIL 202
 
+// Status for struct lease_entry
+#define LE_FREE 0
+#define LE_BUSY 1
+#define LE_DONE 2
+
 struct lease_entry {
 	envid_t src;
 	envid_t dst;
+	char status;
+	int stime;
 };
 
-struct lease_entry lease_map[] = {
-	{ 0, 0 },
-	{ 0, 0 },
-	{ 0, 0 },
-	{ 0, 0 },
-	{ 0, 0 },
-};
+struct lease_entry lease_map[5];
 
 static void
 die(char *m)
@@ -67,6 +68,8 @@ destroy_lease(envid_t env_id)
 	// Clear lease_map entry
 	lease_map[i].src = 0;
 	lease_map[i].dst = 0;
+	lease_map[i].status = LE_FREE;
+	lease_map[i].stime = 0;
 }
 
 int
@@ -79,8 +82,8 @@ process_start_lease(char *buffer)
 	// Check if an entry is available in lease map
 	entry = -1;
 	for (i = 0; i < LEASES; i++) {
-		if (!lease_map[i].src) {
-			if (lease_map[i].dst) {
+		if (lease_map[i].status == LE_FREE) {
+			if (lease_map[i].dst || lease_map[i].src) {
 				die("Lease map is inconsistent!");
 			}
 			entry = i;
@@ -122,6 +125,8 @@ process_start_lease(char *buffer)
 	// Set up mapping in lease map
 	lease_map[i].src = req_env.env_id;
 	lease_map[i].dst = dst_id;
+	lease_map[i].status = LE_BUSY;
+	lease_map[i].stime = sys_time_msec();
 
 	if (debug) {
 		cprintf("New lease mapped: %x->%x\n",
@@ -165,7 +170,7 @@ process_page_req(char *buffer)
 
 	// Allocate page if first chunk
 	if (i == 0) { 
-		if ((r = sys_page_alloc(src_id, (void *) va, perm)) < 0) {
+		if ((r = sys_page_alloc(dst_id, (void *) va, perm)) < 0) {
 			if (r == -E_INVAL) return -E_BAD_REQ;
 			if (r == -E_BAD_ENV) return -E_FAIL;
 			return -E_NO_MEM;
@@ -194,6 +199,7 @@ process_done_lease(char *buffer)
 	}
 
 	if (!lease_map[i].dst) return -E_FAIL;
+	lease_map[i].status = LE_DONE;
 
 	// Change status to ENV_RUNNABLE
 	// We have transfered all required state so can start executing
@@ -340,6 +346,9 @@ umain(int argc, char **argv)
 
 	// Set page fault hanlder
 	set_pgfault_handler(pg_handler);
+
+	// Clear lease map
+	memmove(lease_map, 0, sizeof(struct lease_entry) & LEASES);
 
 	// Create the TCP socket
 	if ((serversock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
