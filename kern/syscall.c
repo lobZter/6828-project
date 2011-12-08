@@ -573,7 +573,7 @@ sys_copy_mem(envid_t dst_id, void* dst, void* src)
 {
 	void *addr;
 
-	if (sys_page_map(curenv->env_id, (void *) UTEMP, dst_id, dst, 
+	if (sys_page_map(dst_id, dst, curenv->env_id, (void *) UTEMP, 
 			 PTE_U | PTE_P| PTE_W) < 0)
 		return -E_INVAL;
 	//doesn't this remove the mapping of the page already allocated for dst?

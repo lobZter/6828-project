@@ -14,6 +14,7 @@
 #define LEASE 0
 #define PAGE 1
 #define DONE 2
+#define ABORT 3
 
 // New error codes (reuse E_NO_MEM)
 #define E_BAD_REQ 200
@@ -54,8 +55,40 @@ pg_handler(struct UTrapframe *utf)
 				PTE_P|PTE_U|PTE_W)) < 0)
 		panic("allocating at %x in page fault handler: %e", addr, r);
 }
-int
-send_lease_req(int sock, envidt_t envid, struct Env env)
+
+void
+send_buff(int sock, const void *req, int size)
+{
+	int r;
+	char reply[BUFFSIZE];
+	char buffer[BUFFSIZE];
+
+	write(sock, req, size);
+
+	while (1)
+        {                                                                       
+                cprintf("Waiting for response from server...\n");                  
+                // Receive message                                              
+                if ((r = read(sock, reply, BUFFSIZE)) < 0)
+                        panic("failed to read");                                
+                cprintf("Received: %s\n", buffer);
+
+		if (reply[0] == -E_FAIL){
+			buffer[0] = ABORT;
+			*((envid_t *) (buffer + 1)) = *((envid_t *) (req + 1));
+			write(sock, buffer, 1 + sizeof(envid_t));
+			die("Failed to send request");
+		}
+		else if(reply[0] == -E_BAD_REQ){
+			write(sock, req, size);
+		}
+		else
+			break;
+        }                                                               
+}
+
+void
+send_lease_req(int sock, envid_t envid, const volatile struct Env *env)
 {
 	int r;
 	char buffer[BUFFSIZE];
@@ -63,11 +96,11 @@ send_lease_req(int sock, envidt_t envid, struct Env env)
 	// Clear buffer
 	memset(buffer, 0, BUFFSIZE);
 	
-	;
+	buffer[0] = LEASE;
 	*((envid_t *)(buffer + 1)) = envid;
 	struct Env *e = (struct Env *) 
 		(buffer + sizeof(envid_t) + 1);
-	memmove(buffer + sizeof(envid_t) + 1, (void *) thisenv,
+	memmove(buffer + sizeof(envid_t) + 1, (void *) env,
 		sizeof(struct Env));
 	e->env_status = ENV_LEASED;
 	if (debug){
@@ -79,20 +112,19 @@ send_lease_req(int sock, envidt_t envid, struct Env env)
 		e->env_id, e->env_parent_id,
 		e->env_status, e->env_hostip);
 	}
-	if(write(sock, buffer, 1 + sizeof(struct Env) + 
-		 sizeof(envid_t)) < 0)
-		return -E_REQ_FAILED;
-	return receive_reply(int sock);
+
+	send_buff(sock, buffer, 1 + sizeof(struct Env) + 
+		  sizeof(envid_t));
 }
 
 
-int
+void
 send_page_req(int sock, envid_t envid, uintptr_t va, int perm)
 {
 	int r, i;
 	char buffer[BUFFSIZE];
 
-	buffer[0] = 1;
+	buffer[0] = PAGE;
 	*((envid_t *) (buffer + 1)) = envid;
 	*((uintptr_t *) (buffer + 1 + sizeof(envid_t))) = va;
 	*((int *) (buffer + 1 + sizeof(envid_t) + sizeof(uintptr_t))) = perm;
@@ -103,16 +135,12 @@ send_page_req(int sock, envid_t envid, uintptr_t va, int perm)
 		memmove((void *) (buffer + 1 + sizeof(envid_t) 
 				  + sizeof(uintptr_t) + 2 * sizeof(int)), 
 			(void *) (va + i * 1024), 1024);
-		if(write(sock, buffer, 1 + sizeof(struct Env) + 
-			 sizeof(envid_t)) < 0)
-			return -E_REQ_FAILED;
-		if(receive_reply(int sock) < 0)
-			return -E_REQ_FAILED; //change to retry maybe?
+		send_buff(sock, buffer, 1 + sizeof(struct Env) + 
+			  sizeof(envid_t));
 	}
-	return 0;
 }
 
-int
+void
 send_pages(int sock, envid_t envid)
 {
 	uintptr_t addr;
@@ -128,40 +156,35 @@ send_pages(int sock, envid_t envid)
 	}
 }
 
-int
+void
 send_done_request(int sock, envid_t envid)
 {
 	int r;
 	char buffer[BUFFSIZE];
 	
-	buffer[0] = 2;
+	buffer[0] = DONE;
 	*((envid_t *) (buffer + 1)) = envid;
-	if(write(sock, buffer, 1 + sizeof(envid_t)) < 0)
-		return -E_REQ_FAILED;
-	return 0;
+	send_buff(sock, buffer, 1 + sizeof(envid_t));
 }
 //For now can only send thisenv
 int
-send_env(int sock, struct Env *env)
+send_env(int sock, const volatile struct Env *env)
 {
 	int r;
 	uintptr_t addr;
 	
 
-	r = send_lease_req(sock, env->env_id, *env);
-	if (r < 0)
-		continue; //TODO	
+	send_lease_req(sock, env->env_id, env);
 
-	r = send_pages(sock, env->env_id);
+	send_pages(sock, env->env_id);
 
-	if (r < 0)
-		continue;
 	send_done_request(sock, env->env_id);
 
+	return 0;
 }
 
 void                                                                           
-send_inet_req()                                                               
+send_inet_req()
 {                                                                               
         int r;                                                                  
         int clientsock;                                                         
@@ -176,30 +199,19 @@ send_inet_req()
         client.sin_addr.s_addr = htonl(0x7f000001);     // 18.9.22.69
         client.sin_port = htons(26001);                    // client port
 
-        cprintf("Connecting to MIT...\n");                                      
+        cprintf("Connecting to ...\n");                                      
                                                                                 
         if ((r = connect(clientsock, (struct sockaddr *) &client,
                          sizeof(client))) < 0)               
-                die("Connection to MIT server failed!");                        
+                die("Connection to server failed!");                        
                                                                                 
-        cprintf("Sending request to MIT...\n");                                 
-        r = snprintf(buffer, BUFFSIZE, "GET /usmanm/Public/ HTTP/1.1\r\n" 
-                     "Host: web.mit.edu\r\n" "\r\n");                           
+	send_env(clientsock, thisenv);
                                                                                 
-        if ((r = write(clientsock, buffer, r)) < 0)                             
-                die("Request to MIT failed...\n");                              
-                                                                                
-        while (1)                                                               
-        {                                                                       
-                cprintf("Waiting for response from MIT...\n");                  
-                // Receive message                                              
-                if ((r = read(clientsock, buffer, BUFFSIZE)) < 0)               
-                        panic("failed to read");                                
-                                                                                
-                cprintf("Received: %s\n", buffer);                              
-                                                                                
-                // no keep alive                                                
-                break;                                                          
-        }                                                                       
         close(clientsock);
-}  
+}
+
+void
+umain(int argc, char **argv)
+{
+	send_inet_req();
+}
