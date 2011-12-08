@@ -164,7 +164,8 @@ process_page_req(char *buffer)
 	if (i > 3) return -E_BAD_REQ;
 
 	// Allocate page if first chunk
-	if (i == 0) { 
+	if (i == 0) {
+		//shouldn't this be dst_id?
 		if ((r = sys_page_alloc(src_id, (void *) va, perm)) < 0) {
 			if (r == -E_INVAL) return -E_BAD_REQ;
 			if (r == -E_BAD_ENV) return -E_FAIL;
