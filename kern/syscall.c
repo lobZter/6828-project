@@ -600,8 +600,8 @@ sys_copy_mem(envid_t src_id, void* src, void* dst)
 	struct Page *pp;
 	
 	// Env Ids valid and caller has perms to access them
-	if (envid2env(src_id, &srcenv, 1) < 0 || 
-		envid2env(curenv->env_id, &dstenv, 1) < 0) {
+	if (envid2env(src_id, &srcenv, 0) < 0 || 
+		envid2env(curenv->env_id, &dstenv, 0) < 0) {
 		return -E_BAD_ENV;
 	}
 		
