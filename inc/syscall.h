@@ -17,12 +17,14 @@ enum {
 	SYS_yield,
 	SYS_ipc_try_send,
 	SYS_ipc_recv,
+	SYS_ipc_set_recv,
 	SYS_time_msec,
 	SYS_env_swap,
 	SYS_net_try_send,
 	SYS_net_try_receive,
 	SYS_get_mac,
 	SYS_env_lease,
+	SYS_env_is_leased,
 	SYS_copy_mem,
 	NSYSCALLS
 };

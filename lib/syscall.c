@@ -117,6 +117,12 @@ sys_ipc_recv(void *dstva)
 	return syscall(SYS_ipc_recv, 1, (uint32_t)dstva, 0, 0, 0, 0);
 }
 
+int 
+sys_ipc_set_recv(void *dstva)
+{
+	return syscall(SYS_ipc_set_recv, 1, (uint32_t)dstva, 0, 0, 0, 0);
+}
+
 unsigned int
 sys_time_msec(void)
 {
@@ -157,4 +163,10 @@ int
 sys_copy_mem(envid_t dst_id, void *dst, void *src)
 {
 	return syscall(SYS_copy_mem, 1, (uint32_t) dst_id, (uint32_t) dst, (uint32_t) src, 0, 0);
+}
+
+int
+sys_env_is_leased(envid_t env_id)
+{
+	return syscall(SYS_env_is_leased, 1, (uint32_t) env_id, 0, 0, 0, 0);
 }

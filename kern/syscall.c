@@ -463,6 +463,26 @@ sys_ipc_recv(void *dstva)
 	return 0;
 }
 
+int
+sys_ipc_set_recv(void *dstva)
+{
+	// LAB 4: Your code here.
+	if ((uintptr_t) dstva < UTOP && ((uintptr_t) dstva % PGSIZE)) {
+		return -E_INVAL;
+	}
+
+	// Set fields which mark as waiting
+	curenv->env_ipc_recving = 1;
+	curenv->env_ipc_dstva = dstva;
+
+	// Reset previous received data fields
+	curenv->env_ipc_value = 0;
+	curenv->env_ipc_from = 0;	
+	curenv->env_ipc_perm = 0;
+
+	return 0;
+}
+
 static int
 sys_env_swap(envid_t envid) 
 {
@@ -586,6 +606,18 @@ sys_copy_mem(envid_t dst_id, void* dst, void* src)
 	return 0;
 }
 
+int
+sys_env_is_leased(envid_t env_id)
+{
+	struct Env* e;
+
+	if (envid2env(env_id, &e, 1) < 0) {
+		return 0;
+	}
+
+	return 1;
+}
+
 // Dispatches to the correct kernel function, passing the arguments.
 int32_t
 syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, uint32_t a5)
@@ -625,6 +657,8 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		return sys_ipc_try_send((envid_t) a1, (uint32_t) a2, (void *) a3, (unsigned) a4);
 	case SYS_ipc_recv:
 		return sys_ipc_recv((void *) a1);
+	case SYS_ipc_set_recv:
+		return sys_ipc_set_recv((void *) a1);
 	case SYS_env_swap:
 		return sys_env_swap((envid_t) a1);
 	case SYS_time_msec:
@@ -639,6 +673,8 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		return sys_env_lease((struct Env*) a1, (envid_t *) a2);
 	case SYS_copy_mem:
 		return sys_copy_mem((envid_t) a1, (void *) a2, (void *) a3);
+	case SYS_env_is_leased:
+		return sys_env_is_leased((envid_t) a1);
 	default:
 		return -E_INVAL;
 	}

@@ -8,6 +8,7 @@
 
 #define BUFFSIZE 1518   // Max packet size
 #define MAXPENDING 5    // Max connection requests
+#define GCTIME 300   // Seconds after which abort
 
 #define LEASES 5 // # of leases
 
@@ -55,11 +56,8 @@ find_lease(envid_t src_id)
 }
 
 void
-destroy_lease(envid_t env_id)
+destroy_lease_id(int i)
 {
-	int i;
-	i = find_lease(env_id);
-
 	if (i == -1) return;
 
 	// Destroy leased env
@@ -70,6 +68,53 @@ destroy_lease(envid_t env_id)
 	lease_map[i].dst = 0;
 	lease_map[i].status = LE_FREE;
 	lease_map[i].stime = 0;
+}
+
+void
+destroy_lease(envid_t env_id)
+{
+	int i;
+	i = find_lease(env_id);
+	destroy_lease_id(i);
+}
+
+void 
+gc_lease_map(int ctime) {
+	int i;
+	envid_t dst;
+
+	// Check if some lease has not been DONE for too long
+	for (i = 0; i < LEASES; i++) {
+		if (ctime - lease_map[i].stime > GCTIME &&
+		    lease_map[i].status != LE_DONE) {
+			if (debug) {
+				cprintf("GCing entry %d: %x\n", 
+					i, lease_map[i].src);
+			}
+			destroy_lease_id(i);
+		}
+	}
+}
+
+// Super naive for now
+void
+check_lease_complete() 
+{
+	int i;
+
+	for (i = 0; i < LEASES; i++) {
+		// See if env is free by now
+		if (lease_map[i].status == LE_DONE) {
+			if (!sys_env_is_leased(lease_map[i].dst)) {
+				if (debug) {
+					cprintf("GCing completed lease "
+						"%d: %x\n",
+					i, lease_map[i].src);
+				}
+				destroy_lease_id(i);
+			}
+		}
+	}
 }
 
 int
@@ -154,13 +199,10 @@ process_page_req(char *buffer)
 	}
 	dst_id = lease_map[i].dst;
 
-	if (!dst_id) return -E_FAIL;
-
 	// Read va to copy data on. Must be page aligned.
 	va = *((uintptr_t *) buffer);
 	cprintf("va %x\n",  va);
 	buffer += sizeof(uintptr_t);
-	if (va % PGSIZE) return -E_BAD_REQ;
 
 	// Read perms
 	perm = *((uint32_t *) buffer);
@@ -171,6 +213,19 @@ process_page_req(char *buffer)
 	i = *buffer;
 	cprintf("chunk id %d\n", i);
 	buffer++;
+
+	if (debug) {
+		cprintf("New page request: \n"
+			"  env_id: %x\n"
+			"  va: %x\n"
+			"  perm: %x\n"
+			"  chunk: %d\n",
+			src_id, va, perm, i);
+
+	}
+
+	if (!dst_id) return -E_FAIL;
+	if (va % PGSIZE) return -E_BAD_REQ;
 	if (i > 3) return -E_BAD_REQ;
 
 	// Allocate page if first chunk
@@ -198,6 +253,12 @@ process_done_lease(char *buffer)
 
 	src_id = *((envid_t *) buffer);
 
+	if (debug) {
+		cprintf("New lease done request: \n"
+			"  env_id: %x\n",
+			src_id);
+	}
+
 	// Check lease map
 	if ((i = find_lease(src_id)) < 0) {
 		return -E_FAIL;
@@ -224,6 +285,13 @@ process_abort_lease(char *buffer)
 
 	// Destroy lease
 	src_id = *((envid_t *) buffer);
+
+	if (debug) {
+		cprintf("New lease abort request: \n"
+			"  env_id: %x\n",
+			src_id);
+	}
+
 	destroy_lease(src_id);
 
 	return 0;
@@ -273,10 +341,14 @@ issue_reply(int sock, int status, envid_t env_id)
 		destroy_lease(env_id);
 	}
 
-	char buf[sizeof(int) + sizeof(envid_t)];
+	uint32_t len = sizeof(int) + sizeof(envid_t);
+	char buf[len];
 	*(int *) buf = status;
 	*(envid_t *) (buf + sizeof(int)) = env_id;
-	write(sock, buf, sizeof(int));
+
+	if (write(sock, buf, len) != len) {
+		die("Failed to send response to client!");
+	}
 }
 
 void
@@ -298,26 +370,6 @@ handle_client(int sock)
 		// Parse and process request
 		r = process_request(buffer);
 
-/*		if (debug) {
-			buffer[0] = 0;
-			*((envid_t *)(buffer + 1)) = thisenv->env_id;
-			struct Env *e = (struct Env *) 
-				(buffer + sizeof(envid_t) + 1);
-			memmove(buffer + sizeof(envid_t) + 1, (void *) thisenv,
-				sizeof(struct Env));
-			e->env_status = ENV_LEASED;
-			cprintf("Sending struct Env: \n"
-				"  env_id: %x\n"
-				"  env_parent_id: %x\n"
-				"  env_status: %x\n"
-				"  env_hostip: %x\n",
-				e->env_id, e->env_parent_id,
-				e->env_status, e->env_hostip);
-			write(sock, buffer, 1 + sizeof(struct Env) + 
-			      sizeof(envid_t));
-			break;
-		}
-*/
 		// Send reply to request
 		issue_reply(sock, r, *((envid_t *)(buffer + 1)));
 
@@ -346,14 +398,18 @@ umain(int argc, char **argv)
 	int serversock, clientsock;
 	struct sockaddr_in echoserver, echoclient;
 	unsigned int echolen;
+	int ltime, ctime;
 
-	binaryname = "djosrcv";
+	binaryname = "djosserv";
 
 	// Set page fault hanlder
 	set_pgfault_handler(pg_handler);
 
 	// Clear lease map
 	memmove(lease_map, 0, sizeof(struct lease_entry) & LEASES);
+
+	// Get start time
+	ltime = sys_time_msec();
 
 	// Create the TCP socket
 	if ((serversock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
@@ -383,14 +439,25 @@ umain(int argc, char **argv)
 
 	// Run until canceled
 	while (1) {
-		unsigned int clientlen = sizeof(echoclient);
+		// GC?
+		ctime = sys_time_msec();
+		if (ctime - ltime > GCTIME) {
+			ltime = ctime;
+			gc_lease_map(ctime);
+		}
+
+		// Check if some process done
+		check_lease_complete();
+
 		// Wait for client connection
+		unsigned int clientlen = sizeof(echoclient);
 		if ((clientsock =
 		     accept(serversock, (struct sockaddr *) &echoclient,
 			    &clientlen)) < 0) {
 			die("Failed to accept client connection");
 		}
 
+		// Handle client connection
 		cprintf("Client connected: Handling...\n");
 		handle_client(clientsock);
 	}
