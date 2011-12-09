@@ -616,7 +616,7 @@ sys_env_is_leased(envid_t env_id)
 		return 0;
 	}
 
-	return 1;
+	return -1;
 }
 
 // Dispatches to the correct kernel function, passing the arguments.
