@@ -309,7 +309,7 @@ sys_page_map(envid_t srcenvid, void *srcva,
 	}
 
 	if (page_insert(dstenv->env_pgdir, pp, dstva, perm) < 0) {
-		-E_NO_MEM;
+		return -E_NO_MEM;
 	}
 
 	return 0;
@@ -595,9 +595,10 @@ sys_copy_mem(envid_t dst_id, void* dst, void* src)
 
 	if (sys_page_map(dst_id, dst, curenv->env_id, (void *) UTEMP, 
 			 PTE_U | PTE_P| PTE_W) < 0){
+		cprintf("boom\n");
 		return -E_INVAL;
 	}
-	//doesn't this remove the mapping of the page already allocated for dst?
+
 	addr = (void *) (UTEMP + PGOFF(dst));
 	memmove(addr, src, 1024);
 
