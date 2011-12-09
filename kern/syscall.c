@@ -593,14 +593,15 @@ sys_copy_mem(envid_t src_id, void* src, void* dst)
 {
 	void *srcva = (void *) ROUNDDOWN(src, PGSIZE);
 	void *dstva = (void *) UTEMP;
-	int perm =  PTE_U | PTE_P| PTE_W;
-
+	int perm = PTE_U | PTE_P | PTE_W;
 	struct Env *srcenv;
-	struct Env *dstenv = curenv;
+	struct Env *dstenv;
 	pte_t *pte;
 	struct Page *pp;
 	
-	if (envid2env(src_id, &srcenv, 0) < 0) {
+	// Env Ids valid and caller has perms to access them
+	if (envid2env(src_id, &srcenv, 1) < 0 || 
+		envid2env(curenv->env_id, &dstenv, 1) < 0) {
 		return -E_BAD_ENV;
 	}
 		
@@ -619,6 +620,11 @@ sys_copy_mem(envid_t src_id, void* src, void* dst)
 		return -E_INVAL;
 	}
 
+	// Only U, P, W and AVAIL can be set
+	if ((perm & ~(PTE_U | PTE_P | PTE_W | PTE_AVAIL)) != 0) {
+		return -E_INVAL;
+	}
+
 	// Dest page writable but source isn't
 	if ((perm & PTE_W) && ((*pte & PTE_W) == 0)) {
 		return -E_INVAL;
@@ -627,6 +633,7 @@ sys_copy_mem(envid_t src_id, void* src, void* dst)
 	if (page_insert(dstenv->env_pgdir, pp, dstva, perm) < 0) {
 		return -E_NO_MEM;
 	}
+
 
 	memmove((void *) (UTEMP + PGOFF(src)), dst, 1024);
 
