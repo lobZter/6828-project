@@ -589,18 +589,46 @@ sys_env_lease(struct Env *src, envid_t *dst_id)
 }
 
 int // Only copies 1024 bytes!
-sys_copy_mem(envid_t dst_id, void* dst, void* src)
+sys_copy_mem(envid_t src_id, void* src, void* dst)
 {
-	void *addr;
-	void *mapva = (void *) ROUNDDOWN(dst, PGSIZE);
+	void *srcva = (void *) ROUNDDOWN(src, PGSIZE);
+	void *dstva = (void *) UTEMP;
+	int perm =  PTE_U | PTE_P| PTE_W;
 
-	if (sys_page_map(dst_id, dst, curenv->env_id, (void *) UTEMP, 
-			 PTE_U | PTE_P| PTE_W) < 0) {
+	struct Env *srcenv;
+	struct Env *dstenv = curenv;
+	pte_t *pte;
+	struct Page *pp;
+	
+	if (envid2env(src_id, &srcenv, 0) < 0) {
+		return -E_BAD_ENV;
+	}
+		
+	// VAs below UTOP and page aligned
+	if ((uintptr_t)srcva >= UTOP || (uintptr_t)srcva % PGSIZE ||
+		(uintptr_t)dstva >= UTOP || (uintptr_t)dstva % PGSIZE) {
 		return -E_INVAL;
 	}
 
-	addr = (void *) (UTEMP + PGOFF(dst));
-	memmove(addr, src, 1024);
+	if ((pp = page_lookup(srcenv->env_pgdir, srcva, &pte)) == NULL) {
+		return -E_INVAL;
+	}
+
+	// PTE_U | PTE_P must be set
+	if ((perm & PTE_U) == 0 || (perm & PTE_P) == 0) {
+		return -E_INVAL;
+	}
+
+	// Dest page writable but source isn't
+	if ((perm & PTE_W) && ((*pte & PTE_W) == 0)) {
+		return -E_INVAL;
+	}
+
+	if (page_insert(dstenv->env_pgdir, pp, dstva, perm) < 0) {
+		return -E_NO_MEM;
+	}
+
+	memmove((void *) (UTEMP + PGOFF(src)), dst, 1024);
 
 	if (sys_page_unmap(curenv->env_id, (void *) UTEMP) < 0)
 		return -E_INVAL;
@@ -616,7 +644,7 @@ sys_env_is_leased(envid_t env_id)
 		return 0;
 	}
 
-	return 1;
+	return -1;
 }
 
 // Dispatches to the correct kernel function, passing the arguments.

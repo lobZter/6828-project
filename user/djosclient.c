@@ -47,7 +47,6 @@ connect_serv()
         int r;
         int clientsock;
 	struct sockaddr_in client;
-        char buffer[BUFFSIZE];
 
         if ((clientsock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
                 die("Doomed!");
@@ -74,7 +73,7 @@ issue_request(int sock, const void *req, int len)
 	// For now only send status code back
 	if (debug) {
 		cprintf("Sending request: %d, %x\n", 
-			req[0], *((envid_t *) (req + 1)));
+			((char *)req)[0], *((envid_t *) (req + 1)));
 	}
 
 	if (write(sock, req, len) != len) {
@@ -86,7 +85,6 @@ send_buff(const void *req, int len)
 {
 	int sock = connect_serv();
 	char buffer[BUFFSIZE];
-
 	issue_request(sock, req, len);
 
 	while (1)
@@ -116,8 +114,8 @@ send_buff(const void *req, int len)
         }                                                               
 }
 
-int
-send_lease_req(envid_t envid, struct Env *env)
+void
+send_lease_req(envid_t envid, const volatile struct Env *env)
 {
 	char buffer[BUFFSIZE];
 	int r;
@@ -143,8 +141,7 @@ send_lease_req(envid_t envid, struct Env *env)
 			e->env_id, e->env_parent_id,
 			e->env_status, e->env_hostip);
 	}
-
-	return send_buff(buffer, 1 + sizeof(struct Env) + 
+	send_buff(buffer, 1 + sizeof(struct Env) + 
 			 sizeof(envid_t));
 }
 
@@ -166,7 +163,6 @@ send_page_req(envid_t envid, uintptr_t va, int perm)
 		sys_copy_mem(envid, (void *) (va + i*1024),  
 			     (buffer + 1 + sizeof(envid_t) 
 			      + sizeof(uintptr_t) + 2 * sizeof(int)));
-
 		if (debug){
 			cprintf("Sending page: \n"
 				"  env_id: %x\n"
@@ -236,6 +232,7 @@ test(){
 void
 umain(int argc, char **argv)
 {
+	set_pgfault_handler(pg_handler);
 	send_inet_req();
 	exit();
 }

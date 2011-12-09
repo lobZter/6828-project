@@ -8,7 +8,7 @@
 
 #define BUFFSIZE 1518   // Max packet size
 #define MAXPENDING 5    // Max connection requests
-#define GCTIME 300   // Seconds after which abort
+#define GCTIME 300*1000   // Seconds after which abort
 
 #define LEASES 5 // # of leases
 
@@ -188,7 +188,6 @@ process_page_req(char *buffer)
 	envid_t src_id, dst_id;
 	uintptr_t va;
 
-	cprintf("Processing page req\n");
 	src_id = *((envid_t *) buffer);
 	buffer += sizeof(envid_t);
 
@@ -439,11 +438,11 @@ umain(int argc, char **argv)
 		ctime = sys_time_msec();
 		if (ctime - ltime > GCTIME) {
 			ltime = ctime;
-			gc_lease_map(ctime);
+			//gc_lease_map(ctime);
 		}
 
 		// Check if some process done
-		check_lease_complete();
+		//check_lease_complete();
 
 		// Wait for client connection
 		unsigned int clientlen = sizeof(echoclient);
