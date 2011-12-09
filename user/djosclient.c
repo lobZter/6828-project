@@ -4,11 +4,16 @@
 
 #define debug 1
 
-#define PORT 7
-
 #define BUFFSIZE 1518   // Max packet size
 #define MAXPENDING 5    // Max connection requests
 #define RETRIES 5       // # of retries
+#define CLEASES 2       // # of client leases
+#define MYIP 0x7f000001 // 127.0.0.1
+#define MYPORT 8
+#define IPCRCV (UTEMP + PGSIZE) // page to map receive 
+
+#define SERVIP 0x7f000001 // Server ip
+#define SERVPORT 7      // Server port
 
 #define LEASE 1
 #define PAGE 0
@@ -20,8 +25,12 @@
 #define E_NO_LEASE 201
 #define E_FAIL 202
 
-//Client error codes
-#define E_REQ_FAILED 300
+struct lease_entry {
+	envid_t env_id;
+	uint32_t lessee_ip;
+};
+
+struct lease_entry lease_map[CLEASES];
 
 static void
 die(char *m)
@@ -43,7 +52,7 @@ pg_handler(struct UTrapframe *utf)
 }
 
 int
-connect_serv()
+connect_serv(uint32_t ip, uint32_t port)
 {
         int r;
         int clientsock;
@@ -52,13 +61,12 @@ connect_serv()
         if ((clientsock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
                 die("Doomed!");
 
+	/* In this context client is actually DJOS server */
+
         memset(&client, 0, sizeof(client));             // Clear struct
         client.sin_family = AF_INET;                    // Internet/IP
-        client.sin_addr.s_addr = htonl(0x12bb0048);     // 18.187.0.72
-//        client.sin_addr.s_addr = htonl(0x12b500e8);     // 18.181.0.232 linerva
-//        client.sin_addr.s_addr = htonl(0x7f000001);     // 127.0.0.1 localhost
-//        client.sin_addr.s_addr = htonl(0x0a00020f);     // 10.0.2.15
-        client.sin_port = htons(26591);                    // client port
+        client.sin_addr.s_addr = htonl(ip);             // client ip
+        client.sin_port = htons(port);                  // client port
 
         cprintf("Connecting to server at %x...\n", 0x12bb0048);
 
@@ -86,7 +94,7 @@ int
 send_buff(const void *req, int len)
 {
 	int cretry = 0;
-	int sock = connect_serv();
+	int sock = connect_serv(SERVIP, SERVPORT);
 	char buffer[BUFFSIZE];
 	issue_request(sock, req, len);
 
@@ -112,7 +120,7 @@ send_buff(const void *req, int len)
 				return -E_FAIL;
 			}
 
-			sock = connect_serv();
+			sock = connect_serv(SERVIP, SERVPORT);
 			issue_request(sock, req, len);
 			continue; // retry
 		}
@@ -204,17 +212,12 @@ send_pages(envid_t envid)
 	int r, perm;
 
 	for (addr = UTEXT; addr < UXSTACKTOP - PGSIZE; addr += PGSIZE){
-		// add sys call which return perms
-		// perm = sys_get_perms(envid, addr);
+		if (sys_get_perms(envid, (void *) addr, &perm) < 0) {
+			return -E_FAIL;
+		};
 
-		if(vpd[PDX(addr)] & PTE_P){
-			if(vpt[PGNUM(addr)] & PTE_P){
-				r = send_page_req(envid, addr, 
-						  PGOFF(vpt[PGNUM(addr)]) & 
-						  PTE_SYSCALL);
-				if (r < 0) return r;
-			}
-		}
+		r = send_page_req(envid, addr, perm);
+		if (r < 0) return r;
 	}
 
 	return 0;
@@ -268,25 +271,54 @@ send_env(const volatile struct Env *env)
 		}
 	}
 
+	if (cretry > RETRIES) return -E_FAIL;
+
 	return 0;
 }
 
-void                                                                           
-send_inet_req()
-{
-	send_env(thisenv);
-}
-
-void
-test(){
-	send_lease_req(thisenv->env_id, thisenv);
-}
 void
 umain(int argc, char **argv)
 {
-	
+	struct Env *e;
+	envid_t envid;
+	int r;
+
+	// Set page fault handler
 	set_pgfault_handler(pg_handler);
-	send_inet_req();
-	cprintf("here nbiatch asdfsfadfdadf\n");
-	exit();
+
+	while (1) {
+		// Wait for lease/migrate requests via IPC
+		sys_ipc_recv((void *) IPCRCV);
+
+		// Get envid from ipc *value*
+		envid = (envid_t) thisenv->env_ipc_value;
+		e = (struct Env *) &envs[ENVX(envid)];
+		
+		// Ids must match
+		if (e->env_id != envid) {
+			die("Env id mismatch!");
+		}
+
+		// Status must be ENV_LEASED
+		if (e->env_status != ENV_LEASED) {
+			cprintf("Failed to lease envid %x. Not leased!\n", 
+				envid);
+		}
+
+		// Set eax to 0, to appear migrate call succeed
+		e->env_tf.tf_regs.reg_eax = 0;
+
+		// Try sending env
+		r = send_env(e);
+		
+		// If lease failed, then set eax to -1 to indicate failure
+		// And mark ENV_RUNNABLE
+		if (r < 0) {
+			e->env_tf.tf_regs.reg_eax = -E_INVAL;
+			sys_env_mark_runnable(envid);
+		}
+		else {
+			// Do what?
+		}
+	}
 }

@@ -26,6 +26,8 @@ enum {
 	SYS_env_lease,
 	SYS_env_is_leased,
 	SYS_copy_mem,
+	SYS_get_perms,
+	SYS_env_mark_runnable,
 	NSYSCALLS
 };
 

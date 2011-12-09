@@ -68,6 +68,8 @@ int     sys_get_mac(uint32_t *low, uint32_t *high);
 int     sys_env_lease(struct Env* src, envid_t *dst_id);
 int     sys_copy_mem(envid_t dst_id, void *dst, void* src);
 int     sys_env_is_leased(envid_t envid);
+int     sys_get_perms(envid_t envid, void *va, int *perm);
+int     sys_env_mark_runnable(envid_t envid);
 
 // This must be inlined.  Exercise for reader: why?
 static __inline envid_t __attribute__((always_inline))

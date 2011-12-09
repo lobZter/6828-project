@@ -553,7 +553,8 @@ sys_get_mac(uint32_t *low, uint32_t *high)
 	return 0;
 }
 
-// DJOS syscalls
+/* DJOS syscalls */
+
 static int
 sys_env_lease(struct Env *src, envid_t *dst_id) 
 {
@@ -653,6 +654,76 @@ sys_env_is_leased(envid_t env_id)
 	return -1;
 }
 
+int
+sys_get_perms(envid_t envid, void *va, int *perm) 
+{
+	struct Env *e;
+	pte_t *pte;
+	int r;
+
+	if ((uintptr_t) va % PGSIZE) return -E_INVAL;
+	
+	if ((r = envid2env(envid, &e, 0)) < 0) {
+		return r;
+	}
+
+	if (!page_lookup(e->env_pgdir, va, &pte)) {
+		return -E_INVAL;
+	}
+
+	*perm = *pte & PTE_SYSCALL;
+
+	return 0;
+}
+
+int 
+sys_env_mark_runnable(envid_t envid) 
+{
+	struct Env *e;
+	int r;
+
+	if ((r = envid2env(envid, &e, 0)) < 0) {
+		return r;   
+	}
+
+	e->env_status = ENV_RUNNABLE;
+	return 0;
+}
+
+int 
+sys_migrate()
+{
+	envid_t jdos_client = 0;
+	struct Env *e;
+	int i, r;
+
+	for (i = 0; i < NENV; i++) {
+		if (envs[i].env_type == ENV_TYPE_JDOSC) {
+			jdos_client = envs[i].env_id;
+			break;
+		}
+	}
+
+	// jdos client running?
+	if (!jdos_client) return -E_BAD_ENV; 
+
+	if ((r = envid2env(jdos_client, &e, 0)) < 0) return r;
+
+	// Mark leased and try to migrate
+	curenv->env_status = ENV_LEASED; 
+	r = sys_ipc_try_send(jdos_client, curenv->env_id, 
+			     NULL, 0);
+	
+	// Failed to migrate, back to running!
+	if (r < 0) {
+		curenv->env_status = ENV_RUNNABLE;
+		return r;
+	}
+
+	// Migrated! BOOM!
+	return 0;
+}
+
 // Dispatches to the correct kernel function, passing the arguments.
 int32_t
 syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, uint32_t a5)
@@ -710,6 +781,10 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		return sys_copy_mem((envid_t) a1, (void *) a2, (void *) a3);
 	case SYS_env_is_leased:
 		return sys_env_is_leased((envid_t) a1);
+	case SYS_get_perms:
+		return sys_get_perms((envid_t) a1, (void *) a2, (int *) a3);
+	case SYS_env_mark_runnable:
+		return sys_env_mark_runnable((envid_t) a1);
 	default:
 		return -E_INVAL;
 	}

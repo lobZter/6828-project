@@ -34,7 +34,7 @@ struct lease_entry {
 	int stime;
 };
 
-struct lease_entry lease_map[5];
+struct lease_entry lease_map[LEASES];
 
 static void
 die(char *m)
