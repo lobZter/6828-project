@@ -634,7 +634,6 @@ sys_copy_mem(envid_t src_id, void* src, void* dst)
 		return -E_NO_MEM;
 	}
 
-
 	memmove((void *) (UTEMP + PGOFF(src)), dst, 1024);
 
 	if (sys_page_unmap(curenv->env_id, (void *) UTEMP) < 0)

@@ -8,6 +8,7 @@
 
 #define BUFFSIZE 1518   // Max packet size
 #define MAXPENDING 5    // Max connection requests
+#define RETRIES 5       // # of retries
 
 #define LEASE 1
 #define PAGE 0
@@ -80,57 +81,65 @@ issue_request(int sock, const void *req, int len)
 		die("Failed to send request to server!");
 	}
 }
-void
+
+int
 send_buff(const void *req, int len)
 {
+	int cretry = 0;
 	int sock = connect_serv();
 	char buffer[BUFFSIZE];
 	issue_request(sock, req, len);
 
 	while (1)
-        {                                                                       
-                cprintf("Waiting for response from server...\n");                  
-                // Receive message                                              
+        {
+		cretry++;
+
+		cprintf("Waiting for response from server...\n");   
+                
+                // Receive message
                 if (read(sock, buffer, BUFFSIZE) < 0)
-                        panic("failed to read");
+                        panic("Failed to read");
 		close(sock);
 	       
                 cprintf("Received: %d\n", *((int *) buffer));
 
-		if (*((int *) buffer) == -E_FAIL){
-			buffer[0] = ABORT;
-			*((envid_t *) (buffer + 1)) = *((envid_t *) (req + 1));
-			sock = connect_serv();
-			issue_request(sock, buffer, 1 + sizeof(envid_t));
-			die("Failed to send request");
+		if (*((int *) buffer) == -E_FAIL) {
+			// server has already destroyed our lease
+			return -E_FAIL; 
 		}
-		else if(*((int *) buffer) == -E_BAD_REQ){
+		else if (*((int *) buffer) == -E_BAD_REQ) {
+			if (cretry > RETRIES) {
+				return -E_FAIL;
+			}
+
 			sock = connect_serv();
 			issue_request(sock, req, len);
+			continue; // retry
 		}
-		else{
-			break;
-		}
-        }                                                               
+		
+		return 0;
+        }
+	
+	return 0;
 }
 
-void
+int
 send_lease_req(envid_t envid, const volatile struct Env *env)
 {
 	char buffer[BUFFSIZE];
 	int r;
+	struct Env *e;
 
 	// Clear buffer
 	memset(buffer, 0, BUFFSIZE);
 	
-	buffer[0] = LEASE;
+	*((char *) buffer) = LEASE;
 	*((envid_t *)(buffer + 1)) = envid;
-	struct Env *e = (struct Env *) (buffer + sizeof(envid_t) + 1);
+	e = (struct Env *) (buffer + sizeof(envid_t) + 1);
 
-	memmove(buffer + sizeof(envid_t) + 1, (void *) env,
-		sizeof(struct Env));
+	memmove(e, (void *) env, sizeof(struct Env));
 
-	e->env_status = ENV_LEASED;
+	// e->env_status = ENV_LEASED;
 
 	if (debug){
 		cprintf("Sending struct Env: \n"
@@ -141,28 +150,37 @@ send_lease_req(envid_t envid, const volatile struct Env *env)
 			e->env_id, e->env_parent_id,
 			e->env_status, e->env_hostip);
 	}
-	send_buff(buffer, 1 + sizeof(struct Env) + 
-			 sizeof(envid_t));
+	
+	return send_buff(buffer, 1 + sizeof(struct Env) + sizeof(envid_t));
 }
 
-void
+int
 send_page_req(envid_t envid, uintptr_t va, int perm)
 {
-	int r, i;
+	int r, i, offset;
 	char buffer[BUFFSIZE];
 	char *s;
 
-	buffer[0] = PAGE;
-	*((envid_t *) (buffer + 1)) = envid;
-	*((uintptr_t *) (buffer + 1 + sizeof(envid_t))) = va;
-	*((int *) (buffer + 1 + sizeof(envid_t) + sizeof(uintptr_t))) = perm;
+	offset = 0;
 
-	for (i = 0; i < 4; i++){
-		*((int *) (buffer + 1 + sizeof(envid_t) 
-			   + sizeof(uintptr_t) + sizeof(int))) = i;
+	* (char *) buffer = PAGE;
+	offset++;
+
+	*((envid_t *) (buffer + offset)) = envid;
+	offset += sizeof(envid_t);
+
+	*((uintptr_t *) (buffer + offset)) = va;
+	offset += sizeof(uintptr_t);
+
+	*((int *) (buffer + offset)) = perm;
+	offset += sizeof(int);
+
+	for (i = 0; i < 4; i++) {
+		*((char *) (buffer + offset)) = i;
 		sys_copy_mem(envid, (void *) (va + i*1024),  
-			     (buffer + 1 + sizeof(envid_t) 
-			      + sizeof(uintptr_t) + 2 * sizeof(int)));
+			     (buffer + 1 + offset));
+//		memmove(buffer + 1 + offset, (void *) (va + i*1024), 1024);
+
 		if (debug){
 			cprintf("Sending page: \n"
 				"  env_id: %x\n"
@@ -171,58 +189,92 @@ send_page_req(envid_t envid, uintptr_t va, int perm)
 				envid, va,
 				i);
 		}
-		send_buff(buffer, 1 + sizeof(struct Env) + 
-			  sizeof(envid_t));
+
+		r = send_buff(buffer, offset + 1025);
+		if (r < 0) return r;
 	}
+
+	return 0;
 }
 
-void
+int
 send_pages(envid_t envid)
 {
 	uintptr_t addr;
-	int i;
+	int r, perm;
 
 	for (addr = UTEXT; addr < UXSTACKTOP - PGSIZE; addr += PGSIZE){
+		// add sys call which return perms
+		// perm = sys_get_perms(envid, addr);
+
 		if(vpd[PDX(addr)] & PTE_P){
 			if(vpt[PGNUM(addr)] & PTE_P){
-				send_page_req(envid, addr, 
-					      PGOFF(vpt[PGNUM(addr)]) & PTE_SYSCALL);
+				r = send_page_req(envid, addr, 
+						  PGOFF(vpt[PGNUM(addr)]) & 
+						  PTE_SYSCALL);
+				if (r < 0) return r;
 			}
 		}
 	}
+
+	return 0;
 }
 
-void
+int
 send_done_request(envid_t envid)
 {
-	int r;
 	char buffer[BUFFSIZE];
 	
 	buffer[0] = DONE;
 	*((envid_t *) (buffer + 1)) = envid;
-	send_buff(buffer, 1 + sizeof(envid_t));
+	return send_buff(buffer, 1 + sizeof(envid_t));
 }
-//For now can only send thisenv
+
+int
+send_abort_request(envid_t envid) 
+{
+	char buffer[BUFFSIZE];
+
+	buffer[0] = ABORT;
+	*((envid_t *) (buffer + 1)) = envid;
+	return send_buff(buffer, 1 + sizeof(envid_t));
+}
+
 int
 send_env(const volatile struct Env *env)
 {
-	int r;
+	int r, cretry = 0;
 	uintptr_t addr;
 	
+	while (cretry <= RETRIES) {
+		cretry++;
 
-	send_lease_req(env->env_id, env);
-	send_pages(env->env_id);
-	send_done_request(env->env_id);
+		r = send_lease_req(env->env_id, env);
+		if (r < 0) {
+			send_abort_request(env->env_id);
+			continue;
+		}
+		
+		r = send_pages(env->env_id);
+		if (r < 0) {
+			send_abort_request(env->env_id);
+			continue;
+		}
+
+		r = send_done_request(env->env_id);
+		if (r < 0) {
+			send_abort_request(env->env_id);
+			continue;
+		}
+	}
 
 	return 0;
 }
 
 void                                                                           
 send_inet_req()
-{                                                                                                                                                               
+{
 	send_env(thisenv);
-
-                                                                               
 }
 
 void
@@ -232,7 +284,9 @@ test(){
 void
 umain(int argc, char **argv)
 {
+	
 	set_pgfault_handler(pg_handler);
 	send_inet_req();
+	cprintf("here nbiatch asdfsfadfdadf\n");
 	exit();
 }
