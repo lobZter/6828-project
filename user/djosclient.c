@@ -11,8 +11,8 @@
 
 #define LEASES (sizeof(lease_map)/sizeof(struct lease_entry)) // # of leases
 
-#define LEASE 0
-#define PAGE 1
+#define LEASE 1
+#define PAGE 0
 #define DONE 2
 #define ABORT 3
 
@@ -62,7 +62,7 @@ send_buff(int sock, const void *req, int size)
 	int r;
 	char reply[BUFFSIZE];
 	char buffer[BUFFSIZE];
-
+	cprintf("here\n");
 	write(sock, req, size);
 
 	while (1)
@@ -100,21 +100,27 @@ send_lease_req(int sock, envid_t envid, const volatile struct Env *env)
 	*((envid_t *)(buffer + 1)) = envid;
 	struct Env *e = (struct Env *) 
 		(buffer + sizeof(envid_t) + 1);
+
 	memmove(buffer + sizeof(envid_t) + 1, (void *) env,
 		sizeof(struct Env));
-	e->env_status = ENV_LEASED;
-	if (debug){
-	cprintf("Sending struct Env: \n"
-		"  env_id: %x\n"
-		"  env_parent_id: %x\n"
-		"  env_status: %x\n"
-		"  env_hostip: %x\n",
-		e->env_id, e->env_parent_id,
-		e->env_status, e->env_hostip);
-	}
 
-	send_buff(sock, buffer, 1 + sizeof(struct Env) + 
-		  sizeof(envid_t));
+	e->env_status = ENV_LEASED;
+
+	if (debug){
+		cprintf("Sending struct Env: \n"
+			"  env_id: %x\n"
+			"  env_parent_id: %x\n"
+			"  env_status: %x\n"
+			"  env_hostip: %x\n",
+			e->env_id, e->env_parent_id,
+			e->env_status, e->env_hostip);
+	}
+	write(sock, buffer, 1+sizeof(struct Env) + sizeof(envid_t));
+//	cprintf("%x,%x,%d\n", buffer, 1 + sizeof(struct Env) + 
+//		sizeof(envid_t), 1 + sizeof(struct Env) + 
+//		  sizeof(envid_t));
+//	send_buff(sock, buffer, 1 + sizeof(struct Env) + 
+//		  sizeof(envid_t));
 }
 
 
@@ -135,8 +141,8 @@ send_page_req(int sock, envid_t envid, uintptr_t va, int perm)
 		memmove((void *) (buffer + 1 + sizeof(envid_t) 
 				  + sizeof(uintptr_t) + 2 * sizeof(int)), 
 			(void *) (va + i * 1024), 1024);
-		send_buff(sock, buffer, 1 + sizeof(struct Env) + 
-			  sizeof(envid_t));
+//		send_buff(sock, buffer, 1 + sizeof(struct Env) + 
+//			  sizeof(envid_t));
 	}
 }
 
@@ -164,7 +170,7 @@ send_done_request(int sock, envid_t envid)
 	
 	buffer[0] = DONE;
 	*((envid_t *) (buffer + 1)) = envid;
-	send_buff(sock, buffer, 1 + sizeof(envid_t));
+	write(sock, buffer, 1 + sizeof(envid_t));
 }
 //For now can only send thisenv
 int
@@ -175,9 +181,7 @@ send_env(int sock, const volatile struct Env *env)
 	
 
 	send_lease_req(sock, env->env_id, env);
-
 	send_pages(sock, env->env_id);
-
 	send_done_request(sock, env->env_id);
 
 	return 0;
@@ -196,8 +200,10 @@ send_inet_req()
                                                                                 
         memset(&client, 0, sizeof(client));             // Clear struct
         client.sin_family = AF_INET;                    // Internet/IP
-        client.sin_addr.s_addr = htonl(0x7f000001);     // 127.0.0.1
-        client.sin_port = htons(26001);                    // client port
+        client.sin_addr.s_addr = htonl(0x12b500e8);     // 18.181.0.232 linerva
+        client.sin_addr.s_addr = htonl(0x7f000001);     // 127.0.0.1 localhost
+//        client.sin_addr.s_addr = htonl(0x0a00020f);     // 10.0.2.15
+        client.sin_port = htons(25281);                    // client port
 
         cprintf("Connecting to ...\n");                                      
                                                                                 
@@ -214,4 +220,5 @@ void
 umain(int argc, char **argv)
 {
 	send_inet_req();
+	exit();
 }
