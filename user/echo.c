@@ -3,6 +3,7 @@
 void
 umain(int argc, char **argv)
 {
+//	send_inet_req();
 	int i, nflag;
 
 	nflag = 0;

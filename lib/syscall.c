@@ -170,3 +170,15 @@ sys_env_is_leased(envid_t env_id)
 {
 	return syscall(SYS_env_is_leased, 1, (uint32_t) env_id, 0, 0, 0, 0);
 }
+
+int
+sys_get_perms(envid_t envid, void *va, int *perm)
+{
+	return syscall(SYS_get_perms, 1, (uint32_t) envid, (uint32_t) va, (uint32_t) perm, 0, 0);
+}
+
+int
+sys_env_mark_runnable(envid_t envid)
+{
+	return syscall(SYS_env_mark_runnable, 1, (uint32_t) envid, 0, 0, 0, 0);
+}
