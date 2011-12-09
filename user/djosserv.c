@@ -438,11 +438,11 @@ umain(int argc, char **argv)
 		ctime = sys_time_msec();
 		if (ctime - ltime > GCTIME) {
 			ltime = ctime;
-			//gc_lease_map(ctime);
+			gc_lease_map(ctime);
 		}
 
 		// Check if some process done
-		//check_lease_complete();
+		check_lease_complete();
 
 		// Wait for client connection
 		unsigned int clientlen = sizeof(echoclient);
