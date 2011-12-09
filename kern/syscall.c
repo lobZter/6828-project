@@ -555,7 +555,7 @@ sys_get_mac(uint32_t *low, uint32_t *high)
 
 /* DJOS syscalls */
 
-static int
+static int // server call to create new lease env
 sys_env_lease(struct Env *src, envid_t *dst_id) 
 {
 	int r;
@@ -589,7 +589,7 @@ sys_env_lease(struct Env *src, envid_t *dst_id)
 	return 0;
 }
 
-int // Only copies 1024 bytes!
+int // Only copies 1024 bytes! server and client call
 sys_copy_mem(envid_t src_id, void* src, void* dst)
 {
 	void *srcva = (void *) ROUNDDOWN(src, PGSIZE);
@@ -642,19 +642,20 @@ sys_copy_mem(envid_t src_id, void* src, void* dst)
 	return 0;
 }
 
-int
+int // server to check if lease is finished
 sys_env_is_leased(envid_t env_id)
 {
 	struct Env* e;
 
 	if (envid2env(env_id, &e, 1) < 0) {
+		if (!e->env_alien) return -1;
 		return 0;
 	}
 
 	return -1;
 }
 
-int
+int // server call to get perms
 sys_get_perms(envid_t envid, void *va, int *perm) 
 {
 	struct Env *e;
@@ -676,8 +677,8 @@ sys_get_perms(envid_t envid, void *va, int *perm)
 	return 0;
 }
 
-int 
-sys_env_mark_runnable(envid_t envid) 
+int // client call on lease failure
+sys_env_mark_runnable(envid_t envid)
 {
 	struct Env *e;
 	int r;
@@ -686,11 +687,13 @@ sys_env_mark_runnable(envid_t envid)
 		return r;   
 	}
 
+	e->env_tf.tf_regs.reg_eax = -E_INVAL;
 	e->env_status = ENV_RUNNABLE;
+
 	return 0;
 }
 
-int 
+int // user call to lease self
 sys_migrate()
 {
 	envid_t jdos_client = 0;
@@ -711,11 +714,11 @@ sys_migrate()
 
 	// Mark leased and try to migrate
 	curenv->env_status = ENV_LEASED; 
-	r = sys_ipc_try_send(jdos_client, curenv->env_id, 
-			     NULL, 0);
+	r = sys_ipc_try_send(jdos_client, curenv->env_id, (void *) UTOP, 0);
 	
 	// Failed to migrate, back to running!
 	if (r < 0) {
+		cprintf("sys_migrate: failed to send ipc %d\n", r);
 		curenv->env_status = ENV_RUNNABLE;
 		return r;
 	}
@@ -785,6 +788,8 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		return sys_get_perms((envid_t) a1, (void *) a2, (int *) a3);
 	case SYS_env_mark_runnable:
 		return sys_env_mark_runnable((envid_t) a1);
+	case SYS_migrate:
+		return sys_migrate();
 	default:
 		return -E_INVAL;
 	}

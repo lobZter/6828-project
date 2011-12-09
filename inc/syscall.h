@@ -28,6 +28,7 @@ enum {
 	SYS_copy_mem,
 	SYS_get_perms,
 	SYS_env_mark_runnable,
+	SYS_migrate,
 	NSYSCALLS
 };
 

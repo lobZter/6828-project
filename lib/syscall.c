@@ -182,3 +182,9 @@ sys_env_mark_runnable(envid_t envid)
 {
 	return syscall(SYS_env_mark_runnable, 1, (uint32_t) envid, 0, 0, 0, 0);
 }
+
+int
+sys_migrate()
+{
+	return syscall(SYS_migrate, 1, 0, 0, 0, 0, 0);
+}

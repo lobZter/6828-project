@@ -81,13 +81,13 @@ i386_init(void)
 	ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
 	// Touch all you want.
-	// ENV_CREATE(user_icode, ENV_TYPE_USER);
 	// ENV_CREATE(net_testoutput, ENV_TYPE_USER);
 	// ENV_CREATE(user_echosrv, ENV_TYPE_USER);
 	// ENV_CREATE(user_httpd, ENV_TYPE_USER);
 	// ENV_CREATE(user_icode_exec, ENV_TYPE_USER);
 	// ENV_CREATE(user_djosserv, ENV_TYPE_JDOSS);
 	ENV_CREATE(user_djosclient, ENV_TYPE_JDOSC);
+	ENV_CREATE(user_hello, ENV_TYPE_USER);
 #endif // TEST*
 
 	// Should not be necessary - drains keyboard because interrupt has given up.

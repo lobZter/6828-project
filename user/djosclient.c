@@ -6,14 +6,14 @@
 
 #define BUFFSIZE 1518   // Max packet size
 #define MAXPENDING 5    // Max connection requests
-#define RETRIES 5       // # of retries
-#define CLEASES 2       // # of client leases
+#define RETRIES 0       // # of retries
+#define CLEASES 0       // # of client leases
 #define MYIP 0x7f000001 // 127.0.0.1
 #define MYPORT 8
 #define IPCRCV (UTEMP + PGSIZE) // page to map receive 
 
-#define SERVIP 0x7f000001 // Server ip
-#define SERVPORT 7      // Server port
+#define SERVIP 0x1238001f // Server ip
+#define SERVPORT 25281    // Server port
 
 #define LEASE 1
 #define PAGE 0
@@ -211,9 +211,9 @@ send_pages(envid_t envid)
 	uintptr_t addr;
 	int r, perm;
 
-	for (addr = UTEXT; addr < UXSTACKTOP - PGSIZE; addr += PGSIZE){
+	for (addr = UTEXT; addr < UXSTACKTOP; addr += PGSIZE){
 		if (sys_get_perms(envid, (void *) addr, &perm) < 0) {
-			return -E_FAIL;
+			continue;
 		};
 
 		r = send_page_req(envid, addr, perm);
@@ -271,7 +271,7 @@ send_env(const volatile struct Env *env)
 		}
 	}
 
-	if (cretry > RETRIES) return -E_FAIL;
+	if (cretry > RETRIES + 1) return -E_FAIL;
 
 	return 0;
 }
@@ -279,7 +279,7 @@ send_env(const volatile struct Env *env)
 void
 umain(int argc, char **argv)
 {
-	struct Env *e;
+	struct Env e;
 	envid_t envid;
 	int r;
 
@@ -287,34 +287,38 @@ umain(int argc, char **argv)
 	set_pgfault_handler(pg_handler);
 
 	while (1) {
+		cprintf("Waiting for new lease requests...\n");
+
 		// Wait for lease/migrate requests via IPC
 		sys_ipc_recv((void *) IPCRCV);
 
 		// Get envid from ipc *value*
 		envid = (envid_t) thisenv->env_ipc_value;
-		e = (struct Env *) &envs[ENVX(envid)];
+		memmove((void *) &e, (void *) &envs[ENVX(envid)], 
+			sizeof(struct Env));
 		
 		// Ids must match
-		if (e->env_id != envid) {
+		if (e.env_id != envid) {
 			die("Env id mismatch!");
 		}
 
 		// Status must be ENV_LEASED
-		if (e->env_status != ENV_LEASED) {
+		if (e.env_status != ENV_LEASED) {
 			cprintf("Failed to lease envid %x. Not leased!\n", 
 				envid);
 		}
 
 		// Set eax to 0, to appear migrate call succeed
-		e->env_tf.tf_regs.reg_eax = 0;
+		e.env_tf.tf_regs.reg_eax = 0;
+		e.env_hostip = MYIP;
 
 		// Try sending env
-		r = send_env(e);
+		r = send_env(&e);
 		
 		// If lease failed, then set eax to -1 to indicate failure
 		// And mark ENV_RUNNABLE
 		if (r < 0) {
-			e->env_tf.tf_regs.reg_eax = -E_INVAL;
+			cprintf("Lease to server failed! Aborting...\n");
 			sys_env_mark_runnable(envid);
 		}
 		else {
