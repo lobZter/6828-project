@@ -56,41 +56,69 @@ pg_handler(struct UTrapframe *utf)
 		panic("allocating at %x in page fault handler: %e", addr, r);
 }
 
+int
+connect_serv(){
+        int r;                                                                  
+        int clientsock;                                                         
+        struct sockaddr_in client;                                              
+        char buffer[BUFFSIZE];                                                  
+                                                                                
+        if ((clientsock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)       
+                die("Doomed!");                                                 
+                                                                                
+        memset(&client, 0, sizeof(client));             // Clear struct
+        client.sin_family = AF_INET;                    // Internet/IP
+        client.sin_addr.s_addr = htonl(0x12b500e8);     // 18.181.0.232 linerva
+//        client.sin_addr.s_addr = htonl(0x7f000001);     // 127.0.0.1 localhost
+//        client.sin_addr.s_addr = htonl(0x0a00020f);     // 10.0.2.15
+        client.sin_port = htons(25281);                    // client port
+
+        cprintf("Connecting to ...\n");                                      
+
+        if ((r = connect(clientsock, (struct sockaddr *) &client,
+                         sizeof(client))) < 0)               
+                die("Connection to server failed!");
+
+	return clientsock;
+}
+
 void
-send_buff(int sock, const void *req, int size)
+send_buff(const void *req, int size)
 {
-	int r;
-	char reply[BUFFSIZE];
+	int sock = connect_serv();
 	char buffer[BUFFSIZE];
-	cprintf("here\n");
 	write(sock, req, size);
 
 	while (1)
         {                                                                       
                 cprintf("Waiting for response from server...\n");                  
                 // Receive message                                              
-                if ((r = read(sock, reply, BUFFSIZE)) < 0)
-                        panic("failed to read");                                
-                cprintf("Received: %s\n", buffer);
+                if (read(sock, buffer, BUFFSIZE) < 0)
+                        panic("failed to read");
+		close(sock);
+	       
+                cprintf("Received: %d\n", *((int *) buffer));
 
-		if (reply[0] == -E_FAIL){
+		if (*((int *) buffer) == -E_FAIL){
 			buffer[0] = ABORT;
 			*((envid_t *) (buffer + 1)) = *((envid_t *) (req + 1));
+			sock = connect_serv();
 			write(sock, buffer, 1 + sizeof(envid_t));
 			die("Failed to send request");
 		}
-		else if(reply[0] == -E_BAD_REQ){
+		else if(*((int *) buffer) == -E_BAD_REQ){
+			sock = connect_serv();
 			write(sock, req, size);
 		}
-		else
+		else{
 			break;
+		}
         }                                                               
 }
 
 void
-send_lease_req(int sock, envid_t envid, const volatile struct Env *env)
+send_lease_req(envid_t envid, const volatile struct Env *env)
 {
-	int r;
 	char buffer[BUFFSIZE];
 
 	// Clear buffer
@@ -115,20 +143,18 @@ send_lease_req(int sock, envid_t envid, const volatile struct Env *env)
 			e->env_id, e->env_parent_id,
 			e->env_status, e->env_hostip);
 	}
-	write(sock, buffer, 1+sizeof(struct Env) + sizeof(envid_t));
-//	cprintf("%x,%x,%d\n", buffer, 1 + sizeof(struct Env) + 
-//		sizeof(envid_t), 1 + sizeof(struct Env) + 
-//		  sizeof(envid_t));
-//	send_buff(sock, buffer, 1 + sizeof(struct Env) + 
-//		  sizeof(envid_t));
+
+	send_buff(buffer, 1 + sizeof(struct Env) + 
+		  sizeof(envid_t));
 }
 
 
 void
-send_page_req(int sock, envid_t envid, uintptr_t va, int perm)
+send_page_req(envid_t envid, uintptr_t va, int perm)
 {
 	int r, i;
 	char buffer[BUFFSIZE];
+	char *s;
 
 	buffer[0] = PAGE;
 	*((envid_t *) (buffer + 1)) = envid;
@@ -141,13 +167,21 @@ send_page_req(int sock, envid_t envid, uintptr_t va, int perm)
 		memmove((void *) (buffer + 1 + sizeof(envid_t) 
 				  + sizeof(uintptr_t) + 2 * sizeof(int)), 
 			(void *) (va + i * 1024), 1024);
-//		send_buff(sock, buffer, 1 + sizeof(struct Env) + 
-//			  sizeof(envid_t));
+		if (debug){
+			cprintf("Sending struct Env: \n"
+				"  env_id: %x\n"
+				"  va: %x\n"
+				"  chunk: %d\n",
+				envid, va,
+				i);
+		}
+		send_buff(buffer, 1 + sizeof(struct Env) + 
+			  sizeof(envid_t));
 	}
 }
 
 void
-send_pages(int sock, envid_t envid)
+send_pages(envid_t envid)
 {
 	uintptr_t addr;
 	int i;
@@ -155,7 +189,7 @@ send_pages(int sock, envid_t envid)
 	for (addr = UTEXT; addr < UXSTACKTOP - PGSIZE; addr += PGSIZE){
 		if(vpd[PDX(addr)] & PTE_P){
 			if(vpt[PGNUM(addr)] & PTE_P){
-				send_page_req(sock, envid, addr, 
+				send_page_req(envid, addr, 
 					      PGOFF(vpt[PGNUM(addr)]));
 			}
 		}
@@ -163,57 +197,35 @@ send_pages(int sock, envid_t envid)
 }
 
 void
-send_done_request(int sock, envid_t envid)
+send_done_request(envid_t envid)
 {
 	int r;
 	char buffer[BUFFSIZE];
 	
 	buffer[0] = DONE;
 	*((envid_t *) (buffer + 1)) = envid;
-	write(sock, buffer, 1 + sizeof(envid_t));
+	send_buff(buffer, 1 + sizeof(envid_t));
 }
 //For now can only send thisenv
 int
-send_env(int sock, const volatile struct Env *env)
+send_env(const volatile struct Env *env)
 {
 	int r;
 	uintptr_t addr;
 	
 
-	send_lease_req(sock, env->env_id, env);
-	send_pages(sock, env->env_id);
-	send_done_request(sock, env->env_id);
+	send_lease_req(env->env_id, env);
+	send_pages(env->env_id);
+	send_done_request(env->env_id);
 
 	return 0;
 }
 
 void                                                                           
 send_inet_req()
-{                                                                               
-        int r;                                                                  
-        int clientsock;                                                         
-        struct sockaddr_in client;                                              
-        char buffer[BUFFSIZE];                                                  
-                                                                                
-        if ((clientsock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)       
-                die("Doomed!");                                                 
-                                                                                
-        memset(&client, 0, sizeof(client));             // Clear struct
-        client.sin_family = AF_INET;                    // Internet/IP
-        client.sin_addr.s_addr = htonl(0x12b500e8);     // 18.181.0.232 linerva
-        client.sin_addr.s_addr = htonl(0x7f000001);     // 127.0.0.1 localhost
-//        client.sin_addr.s_addr = htonl(0x0a00020f);     // 10.0.2.15
-        client.sin_port = htons(25281);                    // client port
-
-        cprintf("Connecting to ...\n");                                      
-                                                                                
-        if ((r = connect(clientsock, (struct sockaddr *) &client,
-                         sizeof(client))) < 0)               
-                die("Connection to server failed!");                        
-                                                                                
-	send_env(clientsock, thisenv);
-                                                                                
-        close(clientsock);
+{                                                                                                                                                               
+	send_env(thisenv);
+                                                                               
 }
 
 void
