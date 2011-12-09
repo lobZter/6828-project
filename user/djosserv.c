@@ -86,7 +86,7 @@ gc_lease_map(int ctime) {
 	// Check if some lease has not been DONE for too long
 	for (i = 0; i < LEASES; i++) {
 		if (ctime - lease_map[i].stime > GCTIME &&
-		    lease_map[i].status != LE_DONE) {
+		    lease_map[i].status == LE_BUSY) {
 			if (debug) {
 				cprintf("GCing entry %d: %x\n", 
 					i, lease_map[i].src);
