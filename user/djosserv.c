@@ -188,7 +188,9 @@ process_page_req(char *buffer)
 	envid_t src_id, dst_id;
 	uintptr_t va;
 
+	cprintf("Processing page req\n");
 	src_id = *((envid_t *) buffer);
+	cprintf("source id: %d\n", src_id);
 	buffer += sizeof(envid_t);
 
 	// Check lease map
@@ -199,14 +201,17 @@ process_page_req(char *buffer)
 
 	// Read va to copy data on. Must be page aligned.
 	va = *((uintptr_t *) buffer);
+	cprintf("va %x\n",  va);
 	buffer += sizeof(uintptr_t);
 
 	// Read perms
 	perm = *((uint32_t *) buffer);
+	cprintf("perm %x\n", perm);
 	buffer += sizeof(uint32_t);
 
 	// Read *chunk/split* id, 0 <= i <= 3 (four 1024 byte chunks)
 	i = *buffer;
+	cprintf("chunk id %d\n", i);
 	buffer++;
 
 	if (debug) {
@@ -307,7 +312,7 @@ process_request(char *buffer)
 		cprintf("Processing request type: %d\n", (int) req_type);
 	}
 
-	switch(req_type) {
+	switch((int)req_type) {
 	case PAGE_REQ:
 		return process_page_req(buffer);
 	case START_LEASE:

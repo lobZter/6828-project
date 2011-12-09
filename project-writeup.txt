@@ -15,7 +15,8 @@ Changes for env struct:
 Protocol:
 1. Lease Request:
    Request:
-	a) Env struct
+	a) env_id
+	b) Env struct
    Response:
 	No: Retry/Abort
    	Yes: Receiver has already set up mapping & allocated Env struct. Host needs to get ready to send environment physical pages.
@@ -47,10 +48,10 @@ Protocol:
 Protocol grammar:
 
 Req 1 Buffer
-1, envid_t, struct Env
+0, envid_t, struct Env
 
 Req 2 Buffer
-0, envid_t, uintptr_t va, int perm, char chunk_id, char[1024] chunk_data
+1, envid_t, uintptr_t va, int perm, char chunk_id, char[1024] chunk_data
 
 Req 3 Buffer
 2, envid_t

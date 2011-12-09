@@ -2,10 +2,39 @@
 #include <lwip/sockets.h>
 #include <lwip/inet.h>
 
+#define debug 1
+
 #define PORT 7
 
-#define BUFFSIZE 32
+#define BUFFSIZE 1518   // Max packet size
 #define MAXPENDING 5    // Max connection requests
+
+#define LEASES (sizeof(lease_map)/sizeof(struct lease_entry)) // # of leases
+
+#define LEASE 1
+#define PAGE 0
+#define DONE 2
+#define ABORT 3
+
+// New error codes (reuse E_NO_MEM)
+#define E_BAD_REQ 200
+#define E_NO_LEASE 201
+#define E_FAIL 202
+//Client error codes
+#define E_REQ_FAILED 300
+
+struct lease_entry {
+	envid_t src;
+	envid_t dst;
+};
+
+struct lease_entry lease_map[] = {
+	{ 0, 0 },
+	{ 0, 0 },
+	{ 0, 0 },
+	{ 0, 0 },
+	{ 0, 0 },
+};
 
 static void
 die(char *m)
@@ -14,76 +43,194 @@ die(char *m)
 	exit();
 }
 
+
+// Page fault handler
 void
-handle_client(int sock)
+pg_handler(struct UTrapframe *utf)
+{
+	int r;
+	void *addr = (void*)utf->utf_fault_va;
+
+	if ((r = sys_page_alloc(0, ROUNDDOWN(addr, PGSIZE),
+				PTE_P|PTE_U|PTE_W)) < 0)
+		panic("allocating at %x in page fault handler: %e", addr, r);
+}
+
+int
+connect_serv(){
+        int r;                                                                  
+        int clientsock;                                                         
+        struct sockaddr_in client;                                              
+        char buffer[BUFFSIZE];                                                  
+                                                                                
+        if ((clientsock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)       
+                die("Doomed!");                                                 
+                                                                                
+        memset(&client, 0, sizeof(client));             // Clear struct
+        client.sin_family = AF_INET;                    // Internet/IP
+        client.sin_addr.s_addr = htonl(0x12b500e8);     // 18.181.0.232 linerva
+//        client.sin_addr.s_addr = htonl(0x7f000001);     // 127.0.0.1 localhost
+//        client.sin_addr.s_addr = htonl(0x0a00020f);     // 10.0.2.15
+        client.sin_port = htons(25281);                    // client port
+
+        cprintf("Connecting to ...\n");                                      
+
+        if ((r = connect(clientsock, (struct sockaddr *) &client,
+                         sizeof(client))) < 0)               
+                die("Connection to server failed!");
+
+	return clientsock;
+}
+
+void
+send_buff(const void *req, int size)
+{
+	int sock = connect_serv();
+	char buffer[BUFFSIZE];
+	write(sock, req, size);
+
+	while (1)
+        {                                                                       
+                cprintf("Waiting for response from server...\n");                  
+                // Receive message                                              
+                if (read(sock, buffer, BUFFSIZE) < 0)
+                        panic("failed to read");
+		close(sock);
+	       
+                cprintf("Received: %d\n", *((int *) buffer));
+
+		if (*((int *) buffer) == -E_FAIL){
+			buffer[0] = ABORT;
+			*((envid_t *) (buffer + 1)) = *((envid_t *) (req + 1));
+			sock = connect_serv();
+			write(sock, buffer, 1 + sizeof(envid_t));
+			die("Failed to send request");
+		}
+		else if(*((int *) buffer) == -E_BAD_REQ){
+			sock = connect_serv();
+			write(sock, req, size);
+		}
+		else{
+			break;
+		}
+        }                                                               
+}
+
+void
+send_lease_req(envid_t envid, const volatile struct Env *env)
 {
 	char buffer[BUFFSIZE];
-	int received = -1;
-	// Receive message
-	if ((received = read(sock, buffer, BUFFSIZE)) < 0)
-		die("Failed to receive initial bytes from client");
 
-	// Send bytes and check for more incoming data in loop
-	while (received > 0) {
-		// Send back received data
-		if (write(sock, buffer, received) != received)
-			die("Failed to send bytes to client");
+	// Clear buffer
+	memset(buffer, 0, BUFFSIZE);
+	
+	buffer[0] = LEASE;
+	*((envid_t *)(buffer + 1)) = envid;
+	struct Env *e = (struct Env *) 
+		(buffer + sizeof(envid_t) + 1);
 
-		// Check for more data
-		if ((received = read(sock, buffer, BUFFSIZE)) < 0)
-			die("Failed to receive additional bytes from client");
+	memmove(buffer + sizeof(envid_t) + 1, (void *) env,
+		sizeof(struct Env));
+
+	e->env_status = ENV_LEASED;
+
+	if (debug){
+		cprintf("Sending struct Env: \n"
+			"  env_id: %x\n"
+			"  env_parent_id: %x\n"
+			"  env_status: %x\n"
+			"  env_hostip: %x\n",
+			e->env_id, e->env_parent_id,
+			e->env_status, e->env_hostip);
 	}
-	close(sock);
+
+	send_buff(buffer, 1 + sizeof(struct Env) + 
+		  sizeof(envid_t));
+}
+
+
+void
+send_page_req(envid_t envid, uintptr_t va, int perm)
+{
+	int r, i;
+	char buffer[BUFFSIZE];
+	char *s;
+
+	buffer[0] = PAGE;
+	*((envid_t *) (buffer + 1)) = envid;
+	*((uintptr_t *) (buffer + 1 + sizeof(envid_t))) = va;
+	*((int *) (buffer + 1 + sizeof(envid_t) + sizeof(uintptr_t))) = perm;
+
+	for (i = 0; i < 3; i++){
+		*((int *) (buffer + 1 + sizeof(envid_t) 
+			   + sizeof(uintptr_t) + sizeof(int))) = i;
+		memmove((void *) (buffer + 1 + sizeof(envid_t) 
+				  + sizeof(uintptr_t) + 2 * sizeof(int)), 
+			(void *) (va + i * 1024), 1024);
+		if (debug){
+			cprintf("Sending struct Env: \n"
+				"  env_id: %x\n"
+				"  va: %x\n"
+				"  chunk: %d\n",
+				envid, va,
+				i);
+		}
+		send_buff(buffer, 1 + sizeof(struct Env) + 
+			  sizeof(envid_t));
+	}
+}
+
+void
+send_pages(envid_t envid)
+{
+	uintptr_t addr;
+	int i;
+
+	for (addr = UTEXT; addr < UXSTACKTOP - PGSIZE; addr += PGSIZE){
+		if(vpd[PDX(addr)] & PTE_P){
+			if(vpt[PGNUM(addr)] & PTE_P){
+				send_page_req(envid, addr, 
+					      PGOFF(vpt[PGNUM(addr)]));
+			}
+		}
+	}
+}
+
+void
+send_done_request(envid_t envid)
+{
+	int r;
+	char buffer[BUFFSIZE];
+	
+	buffer[0] = DONE;
+	*((envid_t *) (buffer + 1)) = envid;
+	send_buff(buffer, 1 + sizeof(envid_t));
+}
+//For now can only send thisenv
+int
+send_env(const volatile struct Env *env)
+{
+	int r;
+	uintptr_t addr;
+	
+
+	send_lease_req(env->env_id, env);
+	send_pages(env->env_id);
+	send_done_request(env->env_id);
+
+	return 0;
+}
+
+void                                                                           
+send_inet_req()
+{                                                                                                                                                               
+	send_env(thisenv);
+                                                                               
 }
 
 void
 umain(int argc, char **argv)
 {
-	int serversock, clientsock;
-	struct sockaddr_in echoserver, echoclient;
-	char buffer[BUFFSIZE];
-	unsigned int echolen;
-	int received = 0;
-
-	// Create the TCP socket
-	if ((serversock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
-		die("Failed to create socket");
-
-	cprintf("opened socket\n");
-
-	// Construct the server sockaddr_in structure
-	memset(&echoserver, 0, sizeof(echoserver));       // Clear struct
-	echoserver.sin_family = AF_INET;                  // Internet/IP
-	echoserver.sin_addr.s_addr = htonl(INADDR_ANY);   // IP address
-	echoserver.sin_port = htons(PORT);		  // server port
-
-	cprintf("trying to bind\n");
-
-	// Bind the server socket
-	if (bind(serversock, (struct sockaddr *) &echoserver,
-		 sizeof(echoserver)) < 0) {
-		die("Failed to bind the server socket");
-	}
-
-	// Listen on the server socket
-	if (listen(serversock, MAXPENDING) < 0)
-		die("Failed to listen on server socket");
-
-	cprintf("bound\n");
-
-	// Run until canceled
-	while (1) {
-		unsigned int clientlen = sizeof(echoclient);
-		// Wait for client connection
-		if ((clientsock =
-		     accept(serversock, (struct sockaddr *) &echoclient,
-			    &clientlen)) < 0) {
-			die("Failed to accept client connection");
-		}
-		cprintf("Client connected: %s\n", inet_ntoa(echoclient.sin_addr));
-		handle_client(clientsock);
-	}
-
-	close(serversock);
-
+	send_inet_req();
+	exit();
 }
