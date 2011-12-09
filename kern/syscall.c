@@ -592,10 +592,10 @@ int // Only copies 1024 bytes!
 sys_copy_mem(envid_t dst_id, void* dst, void* src)
 {
 	void *addr;
+	void *mapva = (void *) ROUNDDOWN(dst, PGSIZE);
 
 	if (sys_page_map(dst_id, dst, curenv->env_id, (void *) UTEMP, 
-			 PTE_U | PTE_P| PTE_W) < 0){
-		cprintf("boom\n");
+			 PTE_U | PTE_P| PTE_W) < 0) {
 		return -E_INVAL;
 	}
 
