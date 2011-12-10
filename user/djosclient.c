@@ -13,7 +13,7 @@
 #define IPCRCV (UTEMP + PGSIZE) // page to map receive 
 
 #define SERVIP 0x12380022 // Server ip
-#define SERVPORT 25281    // Server port
+#define SERVPORT 26591    // Server port
 
 #define LEASE 1
 #define PAGE 0
@@ -132,7 +132,7 @@ send_buff(const void *req, int len)
 }
 
 int
-send_lease_req(envid_t envid, const volatile struct Env *env)
+send_lease_req(envid_t envid, struct Env *env)
 {
 	char buffer[BUFFSIZE];
 	int r;
@@ -146,8 +146,6 @@ send_lease_req(envid_t envid, const volatile struct Env *env)
 	e = (struct Env *) (buffer + sizeof(envid_t) + 1);
 
 	memmove(e, (void *) env, sizeof(struct Env));
-
-	// e->env_status = ENV_LEASED;
 
 	if (debug){
 		cprintf("Sending struct Env: \n"
@@ -245,7 +243,7 @@ send_abort_request(envid_t envid)
 }
 
 int
-send_env(const volatile struct Env *env)
+send_env(struct Env *env)
 {
 	int r, cretry = 0;
 	uintptr_t addr;
@@ -315,7 +313,7 @@ umain(int argc, char **argv)
 
 		// Try sending env
 		r = send_env(&e);
-		r = -1;
+
 		// If lease failed, then set eax to -1 to indicate failure
 		// And mark ENV_RUNNABLE
 		if (r < 0) {

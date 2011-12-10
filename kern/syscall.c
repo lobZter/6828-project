@@ -604,6 +604,9 @@ sys_copy_mem(envid_t src_id, void* src, void* dst, int perm)
 
 	memmove(dst, (void *) (UTEMP + PGOFF(src)), 1024);
 
+	cprintf("sys_copy_mem: %x, %x, %x, %x\n", src, srcva, dst, 
+		UTEMP + PGOFF(src));
+
 	if (sys_page_unmap(curenv->env_id, (void *) UTEMP) < 0)
 		return -E_INVAL;
 
