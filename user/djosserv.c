@@ -232,8 +232,10 @@ process_page_req(char *buffer)
 		}
 	}
 
-	// Copy data to page (for now hardcoded to copy 1024 bytes only)
-	if (sys_copy_mem(dst_id, (void *) (va + i*1024), buffer, perm) < 0) {
+	// Copy data to page from buff 
+        // (for now hardcoded to copy 1024 bytes only)
+	if (sys_copy_mem(dst_id, (void *) (va + i*1024), buffer, 
+			 perm, 1) < 0) {
 		return -E_FAIL;
 	}
 

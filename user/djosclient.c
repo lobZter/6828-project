@@ -193,8 +193,9 @@ send_page_req(envid_t envid, uintptr_t va, int perm)
 				i);
 		}
 		
+		// Copy to buffer
 		r = sys_copy_mem(envid, (void *) (va + i*1024),  
-				 (buffer + 1 + offset), perm);
+				 (buffer + 1 + offset), perm, 0);
 		if (r < 0) return r;
 
 		r = send_buff(buffer, offset + 1025);

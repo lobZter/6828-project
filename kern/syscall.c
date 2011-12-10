@@ -595,18 +595,20 @@ sys_env_lease(struct Env *src, envid_t *dst_id)
 }
 
 int // Only copies 1024 bytes! server and client call
-sys_copy_mem(envid_t src_id, void* src, void* dst, int perm)
+sys_copy_mem(envid_t env_id, void* addr, void* buf, int perm, bool frombuf)
 {
-	void *srcva = (void *) ROUNDDOWN(src, PGSIZE);
-	void *dstva = (void *) UTEMP;
+	void *pgva = (void *) ROUNDDOWN(addr, PGSIZE);
 
-	if (sys_page_map(src_id, srcva, curenv->env_id, dstva, perm) < 0) 
+	if (sys_page_map(env_id, pgva, curenv->env_id, (void *) UTEMP, 
+			 perm) < 0) 
 		return -E_INVAL;
 
-	memmove(dst, (void *) (UTEMP + PGOFF(src)), 1024);
-
-	cprintf("sys_copy_mem: %x, %x, %x, %x\n", src, srcva, dst, 
-		UTEMP + PGOFF(src));
+	if (frombuf) {
+		memmove((void *) (UTEMP + PGOFF(addr)), buf, 1024);
+	}
+	else {
+		memmove(buf, (void *) (UTEMP + PGOFF(addr)), 1024);
+	}
 
 	if (sys_page_unmap(curenv->env_id, (void *) UTEMP) < 0)
 		return -E_INVAL;
@@ -754,7 +756,7 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		return sys_env_lease((struct Env*) a1, (envid_t *) a2);
 	case SYS_copy_mem:
 		return sys_copy_mem((envid_t) a1, (void *) a2, (void *) a3, 
-				    (int) a4);
+				    (int) a4, (bool) a5);
 	case SYS_env_is_leased:
 		return sys_env_is_leased((envid_t) a1);
 	case SYS_get_perms:

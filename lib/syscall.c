@@ -160,9 +160,9 @@ sys_env_lease(struct Env* src, envid_t *dst_id)
 }
 
 int
-sys_copy_mem(envid_t src_id, void *src, void *dst, int perm)
+sys_copy_mem(envid_t env_id, void *addr, void *buf, int perm, bool frombuf)
 {
-	return syscall(SYS_copy_mem, 1, (uint32_t) src_id, (uint32_t) src, (uint32_t) dst, (uint32_t) perm, 0);
+	return syscall(SYS_copy_mem, 1, (uint32_t) env_id, (uint32_t) addr, (uint32_t) buf, (uint32_t) perm, (uint32_t) frombuf);
 }
 
 int

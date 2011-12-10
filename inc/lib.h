@@ -66,7 +66,8 @@ int     sys_net_try_send(char *data, int len);
 int     sys_net_try_receive(char *data, int *len);
 int     sys_get_mac(uint32_t *low, uint32_t *high);
 int     sys_env_lease(struct Env* src, envid_t *dst_id);
-int     sys_copy_mem(envid_t src_id, void *src, void* dst, int perm);
+int     sys_copy_mem(envid_t env_id, void *addr, void* buf, int perm, 
+		     bool frombuf);
 int     sys_env_is_leased(envid_t envid);
 int     sys_get_perms(envid_t envid, void *va, int *perm);
 int     sys_env_mark_runnable(envid_t envid);
