@@ -578,7 +578,6 @@ sys_env_lease(struct Env *src, envid_t *dst_id)
 	e->env_type = src->env_type;
 	e->env_runs = src->env_runs;
 
-	cprintf("FAULT\n %p\n", src->env_pgfault_upcall);
 	e->env_pgfault_upcall = src->env_pgfault_upcall;
 
 	e->env_ipc_recving = src->env_ipc_recving;

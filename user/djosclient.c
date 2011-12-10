@@ -296,8 +296,6 @@ umain(int argc, char **argv)
 		memmove((void *) &e, (void *) &envs[ENVX(envid)], 
 			sizeof(struct Env));
 
-		cprintf("FAULT %p\n", ((struct Env *)envs)[ENVX(envid)].env_pgfault_upcall);
-		
 		// Ids must match
 		if (e.env_id != envid) {
 			die("Env id mismatch!");
