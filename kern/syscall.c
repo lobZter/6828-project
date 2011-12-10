@@ -569,14 +569,16 @@ sys_env_lease(struct Env *src, envid_t *dst_id)
 		return r;
 	}
 
-	/* No need to copy link, id, type, cpunum, pgdir */
+	/* No need to copy link, id, cpunum, pgdir */
 
 	e->env_tf = src->env_tf;
 	e->env_parent_id = src->env_parent_id;
 
 	e->env_status = src->env_status;
+	e->env_type = src->env_type;
 	e->env_runs = src->env_runs;
 
+	cprintf("FAULT\n %p\n", src->env_pgfault_upcall);
 	e->env_pgfault_upcall = src->env_pgfault_upcall;
 
 	e->env_ipc_recving = src->env_ipc_recving;
