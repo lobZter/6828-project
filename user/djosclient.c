@@ -12,7 +12,7 @@
 #define MYPORT 8
 #define IPCRCV (UTEMP + PGSIZE) // page to map receive 
 
-#define SERVIP 0x12380022 // Server ip
+#define SERVIP 0x12bb0047 // Server ip
 #define SERVPORT 26591    // Server port
 
 #define LEASE 1

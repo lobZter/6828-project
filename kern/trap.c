@@ -385,6 +385,7 @@ page_fault_handler(struct Trapframe *tf)
 
 	// LAB 3: Your code here.
 	if (tf->tf_cs == GD_KT) {
+		print_trapframe(tf);
 		panic("kernel page fault va %08x ip %08x env %x\n",
 		      fault_va, tf->tf_eip, curenv->env_id);
 	}
