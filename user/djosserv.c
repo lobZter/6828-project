@@ -83,6 +83,10 @@ gc_lease_map(int ctime) {
 	int i;
 	envid_t dst;
 
+	if (debug) {
+		cprintf("Garbage collecting leases...\n");
+	}
+
 	// Check if some lease has not been DONE for too long
 	for (i = 0; i < LEASES; i++) {
 		if (ctime - lease_map[i].stime > GCTIME &&
@@ -101,6 +105,10 @@ void
 check_lease_complete() 
 {
 	int i;
+
+	if (debug) {
+		cprintf("Checking for completed leases...\n");
+	}
 
 	for (i = 0; i < LEASES; i++) {
 		// See if env is free by now
