@@ -185,9 +185,6 @@ send_page_req(envid_t envid, uintptr_t va, int perm)
 
 	for (i = 0; i < 4; i++) {
 		*((char *) (buffer + offset)) = i;
-		sys_copy_mem(envid, (void *) (va + i*1024),  
-			     (buffer + 1 + offset));
-//		memmove(buffer + 1 + offset, (void *) (va + i*1024), 1024);
 
 		if (debug){
 			cprintf("Sending page: \n"
@@ -197,6 +194,10 @@ send_page_req(envid_t envid, uintptr_t va, int perm)
 				envid, va,
 				i);
 		}
+		
+		r = sys_copy_mem(envid, (void *) (va + i*1024),  
+				 (buffer + 1 + offset), perm);
+		if (r < 0) return r;
 
 		r = send_buff(buffer, offset + 1025);
 		if (r < 0) return r;
@@ -314,7 +315,7 @@ umain(int argc, char **argv)
 
 		// Try sending env
 		r = send_env(&e);
-		
+		r = -1;
 		// If lease failed, then set eax to -1 to indicate failure
 		// And mark ENV_RUNNABLE
 		if (r < 0) {

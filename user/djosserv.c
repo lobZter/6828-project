@@ -233,7 +233,7 @@ process_page_req(char *buffer)
 	}
 
 	// Copy data to page (for now hardcoded to copy 1024 bytes only)
-	if (sys_copy_mem(dst_id, (void *) (va + i*1024), buffer) < 0) {
+	if (sys_copy_mem(dst_id, (void *) (va + i*1024), buffer, perm) < 0) {
 		return -E_FAIL;
 	}
 

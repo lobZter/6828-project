@@ -276,10 +276,14 @@ sys_page_map(envid_t srcenvid, void *srcva,
 	struct Env *dstenv;
 	pte_t *pte;
 	struct Page *pp;
+	bool check = 1;
+
+	if (curenv->env_type == ENV_TYPE_JDOSC) check = 0;
 	
+
 	// Env Ids valid and caller has perms to access them
-	if (envid2env(srcenvid, &srcenv, 1) < 0 || 
-		envid2env(dstenvid, &dstenv, 1) < 0) {
+	if (envid2env(srcenvid, &srcenv, check) < 0 || 
+		envid2env(dstenvid, &dstenv, check) < 0) {
 		return -E_BAD_ENV;
 	}
 		
@@ -590,55 +594,19 @@ sys_env_lease(struct Env *src, envid_t *dst_id)
 }
 
 int // Only copies 1024 bytes! server and client call
-sys_copy_mem(envid_t src_id, void* src, void* dst)
+sys_copy_mem(envid_t src_id, void* src, void* dst, int perm)
 {
 	void *srcva = (void *) ROUNDDOWN(src, PGSIZE);
 	void *dstva = (void *) UTEMP;
-	int perm = PTE_U | PTE_P | PTE_W;
-	struct Env *srcenv;
-	struct Env *dstenv;
-	pte_t *pte;
-	struct Page *pp;
-	
-	// Env Ids valid and caller has perms to access them
-	if (envid2env(src_id, &srcenv, 0) < 0 || 
-		envid2env(curenv->env_id, &dstenv, 0) < 0) {
-		return -E_BAD_ENV;
-	}
-		
-	// VAs below UTOP and page aligned
-	if ((uintptr_t)srcva >= UTOP || (uintptr_t)srcva % PGSIZE ||
-		(uintptr_t)dstva >= UTOP || (uintptr_t)dstva % PGSIZE) {
+
+	if (sys_page_map(src_id, srcva, curenv->env_id, dstva, perm) < 0) 
 		return -E_INVAL;
-	}
 
-	if ((pp = page_lookup(srcenv->env_pgdir, srcva, &pte)) == NULL) {
-		return -E_INVAL;
-	}
-
-	// PTE_U | PTE_P must be set
-	if ((perm & PTE_U) == 0 || (perm & PTE_P) == 0) {
-		return -E_INVAL;
-	}
-
-	// Only U, P, W and AVAIL can be set
-	if ((perm & ~(PTE_U | PTE_P | PTE_W | PTE_AVAIL)) != 0) {
-		return -E_INVAL;
-	}
-
-	// Dest page writable but source isn't
-	if ((perm & PTE_W) && ((*pte & PTE_W) == 0)) {
-		return -E_INVAL;
-	}
-
-	if (page_insert(dstenv->env_pgdir, pp, dstva, perm) < 0) {
-		return -E_NO_MEM;
-	}
-
-	memmove((void *) (UTEMP + PGOFF(src)), dst, 1024);
+	memmove(dst, (void *) (UTEMP + PGOFF(src)), 1024);
 
 	if (sys_page_unmap(curenv->env_id, (void *) UTEMP) < 0)
 		return -E_INVAL;
+
 	return 0;
 }
 
@@ -781,7 +749,8 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 	case SYS_env_lease:
 		return sys_env_lease((struct Env*) a1, (envid_t *) a2);
 	case SYS_copy_mem:
-		return sys_copy_mem((envid_t) a1, (void *) a2, (void *) a3);
+		return sys_copy_mem((envid_t) a1, (void *) a2, (void *) a3, 
+				    (int) a4);
 	case SYS_env_is_leased:
 		return sys_env_is_leased((envid_t) a1);
 	case SYS_get_perms:
