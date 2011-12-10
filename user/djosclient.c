@@ -1,29 +1,7 @@
 #include <inc/lib.h>
 #include <lwip/sockets.h>
 #include <lwip/inet.h>
-
-#define debug 1
-
-#define BUFFSIZE 1518   // Max packet size
-#define MAXPENDING 5    // Max connection requests
-#define RETRIES 0       // # of retries
-#define CLEASES 0       // # of client leases
-#define MYIP 0x7f000001 // 127.0.0.1
-#define MYPORT 8
-#define IPCRCV (UTEMP + PGSIZE) // page to map receive 
-
-#define SERVIP 0x12bb0047 // Server ip
-#define SERVPORT 26591    // Server port
-
-#define LEASE 1
-#define PAGE 0
-#define DONE 2
-#define ABORT 3
-
-// New error codes (reuse E_NO_MEM)
-#define E_BAD_REQ 200
-#define E_NO_LEASE 201
-#define E_FAIL 202
+#include "djos.h"
 
 struct lease_entry {
 	envid_t env_id;
@@ -50,6 +28,39 @@ pg_handler(struct UTrapframe *utf)
 				PTE_P|PTE_U|PTE_W)) < 0)
 		panic("Allocating at %x in page fault handler: %e", addr, r);
 }
+
+int 
+put_lease(envid_t envid, uint32_t hostip) 
+{
+	int i;
+	
+	for (i = 0; i < CLEASES; i++) {
+		if (!lease_map[i].env_id) {
+			lease_map[i].env_id = envid;
+			lease_map[i].lessee_ip = hostip;
+			return i;
+		}
+	}
+
+	return -E_FAIL;
+}
+
+int 
+delete_lease(envid_t envid)
+{
+	int i;
+	
+	for (i = 0; i < CLEASES; i++) {
+		if (lease_map[i].env_id == envid) {
+			lease_map[i].env_id = 0;
+			lease_map[i].lessee_ip = 0;
+			return i;
+		}
+	}
+
+	return -1;
+}
+
 
 int
 connect_serv(uint32_t ip, uint32_t port)
@@ -141,7 +152,7 @@ send_lease_req(envid_t envid, struct Env *env)
 	// Clear buffer
 	memset(buffer, 0, BUFFSIZE);
 	
-	*((char *) buffer) = LEASE;
+	*((char *) buffer) = START_LEASE;
 	*((envid_t *)(buffer + 1)) = envid;
 	e = (struct Env *) (buffer + sizeof(envid_t) + 1);
 
@@ -169,7 +180,7 @@ send_page_req(envid_t envid, uintptr_t va, int perm)
 
 	offset = 0;
 
-	* (char *) buffer = PAGE;
+	* (char *) buffer = PAGE_REQ;
 	offset++;
 
 	*((envid_t *) (buffer + offset)) = envid;
@@ -228,7 +239,7 @@ send_done_request(envid_t envid)
 {
 	char buffer[BUFFSIZE];
 	
-	buffer[0] = DONE;
+	buffer[0] = DONE_LEASE;
 	*((envid_t *) (buffer + 1)) = envid;
 	return send_buff(buffer, 1 + sizeof(envid_t));
 }
@@ -238,7 +249,7 @@ send_abort_request(envid_t envid)
 {
 	char buffer[BUFFSIZE];
 
-	buffer[0] = ABORT;
+	buffer[0] = ABORT_LEASE;
 	*((envid_t *) (buffer + 1)) = envid;
 	return send_buff(buffer, 1 + sizeof(envid_t));
 }
@@ -268,7 +279,7 @@ send_env(struct Env *env)
 		if (r < 0) {
 			send_abort_request(env->env_id);
 			continue;
-		}
+		}		
 	}
 
 	if (cretry > RETRIES + 1) return -E_FAIL;
@@ -306,20 +317,26 @@ umain(int argc, char **argv)
 		if (e.env_status != ENV_LEASED) {
 			cprintf("Failed to lease envid %x. Not leased!\n", 
 				envid);
+			r = -E_FAIL;
 		}
-
-		// Set eax to 0, to appear migrate call succeed
-		e.env_tf.tf_regs.reg_eax = 0;
-		e.env_hostip = MYIP;
-
-		// Try sending env
-		r = send_env(&e);
+		else {
+			// Set eax to 0, to appear migrate call succeed
+			e.env_tf.tf_regs.reg_eax = 0;
+			e.env_hostip = CLIENTIP; // Set my client ip
+			
+			// Put in lease_map
+			if ((r = put_lease(envid, SERVIP)) >= 0) {
+				// Try sending env
+				r = send_env(&e);
+			}
+		}
 
 		// If lease failed, then set eax to -1 to indicate failure
 		// And mark ENV_RUNNABLE
 		if (r < 0) {
 			cprintf("Lease to server failed! Aborting...\n");
 			sys_env_mark_runnable(envid);
+			delete_lease(envid);
 		}
 		else {
 			// Do what?

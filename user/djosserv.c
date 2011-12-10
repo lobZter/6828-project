@@ -1,26 +1,7 @@
 #include <inc/lib.h>
 #include <lwip/sockets.h>
 #include <lwip/inet.h>
-
-#define debug 1
-
-#define PORT 7
-
-#define BUFFSIZE 1518   // Max packet size
-#define MAXPENDING 5    // Max connection requests
-#define GCTIME 300*1000   // Seconds after which abort
-
-#define LEASES 5 // # of leases
-
-#define PAGE_REQ 0
-#define START_LEASE 1
-#define DONE_LEASE 2
-#define ABORT_LEASE 3
-
-// New error codes (reuse E_NO_MEM)
-#define E_BAD_REQ 200
-#define E_NO_LEASE 201
-#define E_FAIL 202
+#include "djos.h"
 
 // Status for struct lease_entry
 #define LE_FREE 0
@@ -34,7 +15,7 @@ struct lease_entry {
 	int stime;
 };
 
-struct lease_entry lease_map[LEASES];
+struct lease_entry lease_map[SLEASES];
 
 static void
 die(char *m)
@@ -47,7 +28,7 @@ int
 find_lease(envid_t src_id) 
 {
 	int i;
-	for (i = 0; i < LEASES; i++) {
+	for (i = 0; i < SLEASES; i++) {
 		if (lease_map[i].src == src_id) {
 			return i;
 		}
@@ -88,7 +69,7 @@ gc_lease_map(int ctime) {
 	}
 
 	// Check if some lease has not been DONE for too long
-	for (i = 0; i < LEASES; i++) {
+	for (i = 0; i < SLEASES; i++) {
 		if (ctime - lease_map[i].stime > GCTIME &&
 		    lease_map[i].status == LE_BUSY) {
 			if (debug) {
@@ -110,7 +91,7 @@ check_lease_complete()
 		cprintf("Checking for completed leases...\n");
 	}
 
-	for (i = 0; i < LEASES; i++) {
+	for (i = 0; i < SLEASES; i++) {
 		// See if env is free by now
 		if (lease_map[i].status == LE_DONE) {
 			if (!sys_env_is_leased(lease_map[i].dst)) {
@@ -134,7 +115,7 @@ process_start_lease(char *buffer)
 
 	// Check if an entry is available in lease map
 	entry = -1;
-	for (i = 0; i < LEASES; i++) {
+	for (i = 0; i < SLEASES; i++) {
 		if (lease_map[i].status == LE_FREE) {
 			if (lease_map[i].dst || lease_map[i].src) {
 				die("Lease map is inconsistent!");
@@ -411,7 +392,7 @@ umain(int argc, char **argv)
 	set_pgfault_handler(pg_handler);
 
 	// Clear lease map
-	memmove(lease_map, 0, sizeof(struct lease_entry) & LEASES);
+	memmove(lease_map, 0, sizeof(struct lease_entry) & SLEASES);
 
 	// Get start time
 	ltime = sys_time_msec();
@@ -427,7 +408,7 @@ umain(int argc, char **argv)
 	memset(&echoserver, 0, sizeof(echoserver));       // Clear struct
 	echoserver.sin_family = AF_INET;                  // Internet/IP
 	echoserver.sin_addr.s_addr = htonl(INADDR_ANY);   // IP address
-	echoserver.sin_port = htons(PORT);		  // server port
+	echoserver.sin_port = htons(SPORT);		  // server port
 
 	cprintf("Binding DJOS Receive Socket\n");
 

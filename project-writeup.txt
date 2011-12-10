@@ -65,14 +65,11 @@ int status, envid_t envid
 
 ==TODO==
 
-Part 1:
-Client
-Test paging
-
-Part 2:
-IPC - no Mem sharing
-Memory sharing
-IPC Mem sharing
+-IMPORTANT: Add support for multiple processes to network stack!
+-Add logic for EXECUTED_LEASE
+-IPC - no Mem sharing
+-Memory sharing
+-IPC Mem sharing
 
 Lower priority:
 String match tester
