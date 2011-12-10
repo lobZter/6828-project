@@ -600,7 +600,7 @@ env_run(struct Env *e)
 		curenv->env_runs++;
 		lcr3(PADDR(curenv->env_pgdir));
 	}
-
+	cprintf("RUNNING BITCHES %x\n", e->env_id);
 	unlock_kernel();
 	env_pop_tf(&curenv->env_tf);
 }

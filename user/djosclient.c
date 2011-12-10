@@ -210,7 +210,7 @@ send_pages(envid_t envid)
 	uintptr_t addr;
 	int r, perm;
 
-	for (addr = UTEXT; addr < UXSTACKTOP; addr += PGSIZE){
+	for (addr = UTEXT; addr < UTOP; addr += PGSIZE){
 		if (sys_get_perms(envid, (void *) addr, &perm) < 0) {
 			continue;
 		};
