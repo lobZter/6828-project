@@ -412,6 +412,7 @@ umain(int argc, char **argv)
 	if ((serversock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
 		die("Failed to create socket");
 
+	cprintf("Running DJOS Server %x\n", thisenv->env_id);
 	cprintf("Opened DJOS Receive Socket\n");
 
 	// Construct the server sockaddr_in structure
@@ -445,6 +446,8 @@ umain(int argc, char **argv)
 
 		// Check if some process done
 		check_lease_complete();
+
+		cprintf("Waiting for client...\n");
 
 		// Wait for client connection
 		unsigned int clientlen = sizeof(echoclient);
