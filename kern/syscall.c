@@ -622,7 +622,7 @@ sys_env_is_leased(envid_t env_id)
 	struct Env* e;
 
 	if (envid2env(env_id, &e, 1) < 0) {
-		if (!e && !e->env_alien) return -1;
+		if (e && !e->env_alien) return -1;
 		return 0;
 	}
 
