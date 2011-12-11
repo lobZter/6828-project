@@ -264,22 +264,17 @@ send_env(struct Env *env)
 		cretry++;
 
 		r = send_lease_req(env->env_id, env);
-		if (r < 0) {
-			send_abort_request(env->env_id);
-			continue;
-		}
+		if (r < 0) goto error;
 		
 		r = send_pages(env->env_id);
-		if (r < 0) {
-			send_abort_request(env->env_id);
-			continue;
-		}
+		if (r < 0) goto error;
 
 		r = send_done_request(env->env_id);
-		if (r < 0) {
-			send_abort_request(env->env_id);
-			continue;
-		}		
+		if (r < 0) goto error;
+
+		break;
+	error:
+		send_abort_request(env->env_id);
 	}
 
 	if (cretry > RETRIES + 1) return -E_FAIL;
