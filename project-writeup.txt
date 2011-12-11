@@ -67,6 +67,7 @@ int status, envid_t envid
 
 -IMPORTANT: Add support for multiple processes to network stack!
 -Add logic for EXECUTED_LEASE
+-Change client to take lease requests by passing code in value and data in page
 -IPC - no Mem sharing
 -Memory sharing
 -IPC Mem sharing
