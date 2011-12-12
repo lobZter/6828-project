@@ -137,8 +137,6 @@ connect_serv(uint32_t ip, uint32_t port)
 		return -E_FAIL;
 	}
 
-	cprintf("Connected to server...\n");
-	
 	return clientsock;
 }
 void
@@ -357,7 +355,7 @@ try_send_lease(envid_t envid, void *thisenv)
 
 	// Ids must match
 	if (e.env_id != envid) {
-		cprintf("Env id mismatch!");
+		cprintf("Env id mismatch! %x, %x", e.env_id, envid);
 		return;
 	}
 
@@ -570,9 +568,7 @@ process_request()
 	int icode, perm;
 	envid_t sender;
 
-	cprintf("about to wait fo receive\n");
 	icode = ipc_recv(&sender, (void *) IPCRCV, &perm);
-	cprintf("rcv request for %d\n", icode);
 
 	switch(icode)
 	{
