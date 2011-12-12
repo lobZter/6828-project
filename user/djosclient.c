@@ -133,7 +133,8 @@ connect_serv(uint32_t ip, uint32_t port)
 
 	return clientsock;
 }
-void
+
+int
 issue_request(int sock, const void *req, int len)
 {
 	// For now only send status code back
@@ -143,8 +144,11 @@ issue_request(int sock, const void *req, int len)
 	}
 
 	if (write(sock, req, len) != len) {
-		die("Failed to send request to server!");
+		cprintf("Failed to send request to server!\n");
+		return -1;
 	}
+
+	return len;
 }
 
 int
@@ -155,7 +159,14 @@ send_buff(const void *req, int len)
 	int sock = connect_serv(SERVIP, SERVPORT);
 	if (sock < 0) return -E_FAIL;
 	char buffer[BUFFSIZE];
-	issue_request(sock, req, len);
+	while (cretry < RETRIES) {
+		if (issue_request(sock, req, len) >= 0) {
+			break;
+		}
+		close(sock);
+		sock = connect_serv(SERVIP, SERVPORT);
+		cretry++;
+	}
 
 	if (debug) {
 		cprintf("Waiting for response from server...\n");   
@@ -607,7 +618,8 @@ umain(int argc, char **argv)
 		check_lease_complete();
 
 		if (debug) {
-			cprintf("Waiting for requests...\n");
+			cprintf("Waiting for requests on client %x...\n",
+				thisenv->env_id);
 		}
 
 		process_request();

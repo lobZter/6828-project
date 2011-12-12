@@ -419,7 +419,7 @@ process_request(char *buffer)
 	return 0;
 }
 
-void
+int
 issue_reply(int sock, int status, envid_t env_id)
 {
 	// For now only send status code back
@@ -433,8 +433,11 @@ issue_reply(int sock, int status, envid_t env_id)
 	*(envid_t *) (buf + sizeof(int)) = env_id;
 
 	if (write(sock, buf, len) != len) {
-		die("Failed to send response to client!");
+		cprintf("Failed to send response to client!");
+		return -1;
 	}
+
+	return len;
 }
 
 void
