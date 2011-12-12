@@ -437,7 +437,7 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 
 		// Failed to send ipc, back to running!
 		if (r < 0) {
-			cprintf("sys_migrate: failed to send ipc %d\n", r);
+			cprintf("sys_sendipc: failed to send ipc %d\n", r);
 			curenv->env_status = ENV_RUNNABLE;
 			return r;
 		}
@@ -730,13 +730,9 @@ sys_migrate(void *thisenv)
 	*((envid_t *) IPCSND) = curenv->env_id;
 	*((void **)(IPCSND + sizeof(envid_t))) = thisenv;
 
-	cprintf("sys_migrate: sending to josclient\n");
-
 	//can't write to page
 	r = sys_ipc_try_send(jdos_client, CLIENT_LEASE_REQUEST, 
 			     (void *) IPCSND, PTE_U|PTE_P); 
-
-	cprintf("sys_migrate: ipc status reply %d\n", r);
 
 	sys_page_unmap(curenv->env_id, (void *) IPCSND);
 

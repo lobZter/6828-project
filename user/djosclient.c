@@ -123,7 +123,12 @@ connect_serv(uint32_t ip, uint32_t port)
 	if (debug) {
 		cprintf("Connecting to server at %x:%d...\n", ip, port);
 	}
-	cprintf("next\n");
+
+	// 0x1001009 wants to send IPC to us. It is socket thread.
+	// We want to send IPC to ns serv for connect. 
+	// Serve while loop is halted because thread is not returning.
+	// We apparently get back socket request from 0x1001010.
+
         if ((r = connect(clientsock, (struct sockaddr *) &client,
                          sizeof(client))) < 0) {              
                 cprintf("Connection to server failed!\n");
