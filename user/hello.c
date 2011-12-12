@@ -4,7 +4,10 @@
 void
 umain(int argc, char **argv)
 {
-	int id;
+	cprintf("Now you don't see me...\n");
+	sys_migrate(&thisenv);
+	cprintf("Now you do!\n");
+/*	int id;
 	int val;
 
 	id = fork();
@@ -33,4 +36,5 @@ umain(int argc, char **argv)
 		ipc_send(id, 0x300, NULL, 0x0);
 		cprintf("send child 300\n");
 	}
+*/
 }
