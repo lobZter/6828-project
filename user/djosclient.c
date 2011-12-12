@@ -584,7 +584,10 @@ umain(int argc, char **argv)
 		// GC completed leases
 		check_lease_complete();
 
-		cprintf("Waiting for requests...\n");
+		if (debug) {
+			cprintf("Waiting for requests...\n");
+		}
+
 		process_request();
 	}
 }
