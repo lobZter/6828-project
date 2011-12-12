@@ -1,6 +1,8 @@
 #ifndef JOS_USER_DJOS_H
 #define JOS_USER_DJOS_H
 
+#include "ip.h"
+
 #define debug 0
 
 /* Common params */
