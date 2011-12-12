@@ -401,10 +401,6 @@ try_send_lease_completed(envid_t envid)
 		goto end;
 	}
 
-	if ((i = find_lease(envid)) < 0) {
-		r = -E_FAIL;
-		goto end;
-	}
 	cprintf("Sending completed for %x %x\n", e.env_id, e.env_hosteid);
 	while (ctries <= RETRIES) {
 		buffer[0] = COMPLETED_LEASE;
