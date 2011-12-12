@@ -9,7 +9,7 @@ umain(int argc, char **argv)
 	sys_migrate(&thisenv);
 	cprintf("===> Now you do!\n");
 */
-
+/*
 	// 2
 	int id;
 	cprintf("===> Watch closely...\n");
@@ -19,9 +19,9 @@ umain(int argc, char **argv)
 	}
 
 	cprintf("===> Time for the prestige!\n");
-
+*/
         // 3
-/*	int id;
+	int id;
 	int val;
 
 	id = fork();
@@ -50,5 +50,5 @@ umain(int argc, char **argv)
 		ipc_send(id, 0x300, NULL, 0x0);
 		cprintf("===> send child 300\n");
 	}
-*/
+
 }
