@@ -3,10 +3,6 @@
 
 #define debug 0
 
-#define SERVIP 0x12bb0016 // Server ip
-#define SERVPORT 25281    // Server port
-
-
 /* Common params */
 #define BUFFSIZE 1518   // Max packet size
 #define MAXPENDING 5    // Max connection requests
@@ -19,8 +15,6 @@
 /* Client params */
 #define RETRIES 5       // # of retries
 #define CLEASES 5       // # of client leases
-#define CLIENTIP 0x7f000001 // 127.0.0.1
-#define CLIENTPORT 80
 #define IPCRCV (UTEMP + PGSIZE) // page to map ipc rcv
 #define IPCSND (UTEMP + PGSIZE) // page to map ipc rcv
 
