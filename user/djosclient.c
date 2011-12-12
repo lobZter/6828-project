@@ -355,7 +355,7 @@ try_send_lease(envid_t envid, void *thisenv)
 
 	// Ids must match
 	if (e.env_id != envid) {
-		cprintf("Env id mismatch! %x, %x\n", e.env_id, envid);
+		cprintf("Env id mismatch in lease! %x, %x\n", e.env_id, envid);
 		return;
 	}
 
@@ -404,7 +404,8 @@ try_send_lease_completed(envid_t envid)
 
 	// Ids must match
 	if (e.env_id != envid) {
-		cprintf("Env id mismatch!");
+		cprintf("Env id mismatch in completed %x, %x!\n",
+			e.env_id, envid);
 		return; // That env doesn't exist
 	}
 
@@ -528,7 +529,8 @@ try_send_ipc(envid_t src_id, uintptr_t va, int perm)
 
 	// Ids must match
 	if (e.env_id != packet.pkt_dst) {
-		cprintf("Env id mismatch!");
+		cprintf("Env id mismatch in ipc %x, %x!\n",
+			e.env_id, envid);
 		r = -E_BAD_ENV;
 	}
 
