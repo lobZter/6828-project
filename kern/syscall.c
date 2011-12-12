@@ -716,11 +716,10 @@ sys_migrate(void *thisenv)
 	*((envid_t *) IPCSND) = curenv->env_id;
 	*((void **)(IPCSND + sizeof(envid_t))) = thisenv;
 
-	cprintf("migrate ipc...\n");
 	//can't write to page
 	r = sys_ipc_try_send(jdos_client, CLIENT_LEASE_REQUEST, 
 			     (void *) IPCSND, PTE_U|PTE_P); 
-	cprintf("migrate ipc done...");
+
 	sys_page_unmap(curenv->env_id, (void *) IPCSND);
 
 	// Failed to migrate, back to running!
