@@ -105,8 +105,8 @@ check_lease_complete()
 
 		// See if env is free by now
 		if (lease_map[i].status == LE_DONE) {
-			if (e->env_parent_id != thisenv->env_id ||
-			    e->env_alien != 1 ||
+//			if (e->env_parent_id != thisenv->env_id ||
+			if (e->env_alien != 1 ||
 			    e->env_status == ENV_FREE) {
 				if (debug) {
 					cprintf("GCing completed lease "
@@ -167,7 +167,7 @@ process_start_lease(char *buffer)
 
 	// Set parent_id of env to self (doesn't have notion of parent_id
 	// anymore
-	req_env.env_parent_id = thisenv->env_id;	
+//	req_env.env_parent_id = thisenv->env_id;	
 	req_env.env_hosteid = src_id;
 
 	// If there is any free env, copy over request env.
