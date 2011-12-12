@@ -123,7 +123,7 @@ connect_serv(uint32_t ip, uint32_t port)
 	if (debug) {
 		cprintf("Connecting to server at %x:%d...\n", ip, port);
 	}
-
+	cprintf("next\n");
         if ((r = connect(clientsock, (struct sockaddr *) &client,
                          sizeof(client))) < 0) {              
                 cprintf("Connection to server failed!\n");
