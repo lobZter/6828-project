@@ -30,7 +30,7 @@ umain(int argc, char **argv)
 		val = ipc_recv(NULL, NULL, NULL);
 		cprintf("child sent me %x\n", val);
 
-		ipc_send(id, val + 0x300, NULL, 0x0);
+		ipc_send(id, 0x300, NULL, 0x0);
 		cprintf("send child 300\n");
 	}
 }
