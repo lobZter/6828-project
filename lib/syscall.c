@@ -178,9 +178,9 @@ sys_get_perms(envid_t envid, void *va, int *perm)
 }
 
 int
-sys_env_mark_runnable(envid_t envid)
+sys_env_unsuspend(envid_t envid, uint32_t status, uint32_t value)
 {
-	return syscall(SYS_env_mark_runnable, 1, (uint32_t) envid, 0, 0, 0, 0);
+	return syscall(SYS_env_unsuspend, 1, (uint32_t) envid, (uint32_t) status, (uint32_t) value, 0, 0);
 }
 
 int

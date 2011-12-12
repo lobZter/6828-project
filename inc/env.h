@@ -36,7 +36,8 @@ enum {
 	ENV_RUNNABLE,
 	ENV_RUNNING,
 	ENV_NOT_RUNNABLE,
-	ENV_LEASED
+	ENV_LEASED,
+	ENV_SUSPENDED,
 };
 
 // Special environment types

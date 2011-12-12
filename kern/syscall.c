@@ -652,7 +652,7 @@ sys_get_perms(envid_t envid, void *va, int *perm)
 }
 
 int // client call on lease failure
-sys_env_mark_runnable(envid_t envid)
+sys_env_unsuspend(envid_t envid, uint32_t status, uint32_t value)
 {
 	struct Env *e;
 	int r;
@@ -661,8 +661,8 @@ sys_env_mark_runnable(envid_t envid)
 		return r;   
 	}
 
-	e->env_tf.tf_regs.reg_eax = -E_INVAL;
-	e->env_status = ENV_RUNNABLE;
+	e->env_tf.tf_regs.reg_eax = value;
+	e->env_status = status;
 
 	return 0;
 }
@@ -687,7 +687,7 @@ sys_migrate()
 	if ((r = envid2env(jdos_client, &e, 0)) < 0) return r;
 
 	// Mark leased and try to migrate
-	curenv->env_status = ENV_LEASED; 
+	curenv->env_status = ENV_SUSPENDED; 
 	r = sys_ipc_try_send(jdos_client, curenv->env_id, (void *) UTOP, 0);
 	
 	// Failed to migrate, back to running!
@@ -761,8 +761,8 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		return sys_env_is_leased((envid_t) a1);
 	case SYS_get_perms:
 		return sys_get_perms((envid_t) a1, (void *) a2, (int *) a3);
-	case SYS_env_mark_runnable:
-		return sys_env_mark_runnable((envid_t) a1);
+	case SYS_env_unsuspend:
+		return sys_env_unsuspend((envid_t) a1, (uint32_t) a2, (uint32_t) a3);
 	case SYS_migrate:
 		return sys_migrate();
 	default:

@@ -308,8 +308,8 @@ umain(int argc, char **argv)
 			die("Env id mismatch!");
 		}
 
-		// Status must be ENV_LEASED
-		if (e.env_status != ENV_LEASED) {
+		// Status must be ENV_SUSPENDED
+		if (e.env_status != ENV_SUSPENDED) {
 			cprintf("Failed to lease envid %x. Not leased!\n", 
 				envid);
 			r = -E_FAIL;
@@ -330,10 +330,11 @@ umain(int argc, char **argv)
 		// And mark ENV_RUNNABLE
 		if (r < 0) {
 			cprintf("Lease to server failed! Aborting...\n");
-			sys_env_mark_runnable(envid);
+			sys_env_unsuspend(envid, ENV_RUNNABLE, -E_INVAL);
 			delete_lease(envid);
 		}
 		else {
+			sys_env_unsuspend(envid, ENV_LEASED, 0);
 			// Do what?
 		}
 	}

@@ -70,7 +70,7 @@ int     sys_copy_mem(envid_t env_id, void *addr, void* buf, int perm,
 		     bool frombuf);
 int     sys_env_is_leased(envid_t envid);
 int     sys_get_perms(envid_t envid, void *va, int *perm);
-int     sys_env_mark_runnable(envid_t envid);
+int     sys_env_unsuspend(envid_t envid, uint32_t status, uint32_t value);
 int     sys_migrate();
 
 // This must be inlined.  Exercise for reader: why?
