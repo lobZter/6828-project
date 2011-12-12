@@ -351,7 +351,7 @@ process_ipc_start(char *buffer)
 	case -E_BAD_ENV:
 		return -E_FAIL;
 	}
-
+	cprintf("sending ipc response as %d\n", r);
 	return r;
 }
 int

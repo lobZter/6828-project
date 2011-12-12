@@ -97,7 +97,6 @@ check_lease_complete()
 
 		e = (struct Env *) &envs[ENVX(lease_map[i].env_id)];
 		if (e->env_status != ENV_LEASED) {
-			cprintf("GCING lease %x\n", e->env_id);
 			lease_map[i].env_id = 0;
 			lease_map[i].lessee_ip = 0;
 		}
@@ -471,6 +470,7 @@ send_ipc_req(struct ipc_pkt *packet, uint32_t ip)
 		cretry++;
 
 		r = send_ipc_start(packet);
+		cprintf("server send ipc reply as %d\n", r);
 		switch (r) {
 		case -E_NO_IPC:
 			return -E_IPC_NOT_RECV;
