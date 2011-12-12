@@ -444,7 +444,7 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 
 		// Failed to send ipc, back to running!
 		if (r < 0) {
-			cprintf("sys_migrate: failed to send ipc %d\n", r);
+			cprintf("sys_send_ipc: failed to send ipc %d\n", r);
 			curenv->env_status = ENV_RUNNABLE;
 			return r;
 		}

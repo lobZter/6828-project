@@ -20,7 +20,7 @@ umain(int argc, char **argv)
 		
 		id = fork();
 		if (!id) {
-			sys_migrate(&thisenv);
+			while(sys_migrate(&thisenv));
 			cprintf("hello world! i am a grand child environment"
 				" %08x\n", thisenv->env_id);
 		}
