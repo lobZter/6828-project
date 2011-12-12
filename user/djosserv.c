@@ -342,10 +342,10 @@ process_completed_lease(char *buffer)
 			envid);
 	}
 
-	e = &envs[ENVX(envid)];
+	e = (struct Env *) &envs[ENVX(envid)];
 	
 	if (e->env_status == ENV_LEASED) {
-		sys_env_destroy(src_id);
+		sys_env_destroy(envid);
 	}
 
 	return 0;
