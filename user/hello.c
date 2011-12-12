@@ -30,7 +30,7 @@ umain(int argc, char **argv)
 		id = fork();
 		if (!id) {
 			while (sys_migrate(&thisenv) != 0) {
-				cprintf("retrying...\n");
+//				cprintf("retrying...\n");
 			}
 			cprintf("hello world! i am second child environment "
 				"%08x\n", 
