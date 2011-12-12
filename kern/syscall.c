@@ -403,7 +403,8 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 
 	if ((rcv->env_status == ENV_LEASED) || // is leased?
 	    (curenv->env_alien && // is lessee? (match mac addr bits)
-	     ((curenv->env_hosteid ^ envid) < 0x000fffff))) {
+	     ((curenv->env_hosteid & 0xfff00000) == 
+	      (envid & 0xfff00000)))) {
 		envid_t jdos_client = 0;
 		struct Env *e;
 		int i, r;
@@ -639,7 +640,6 @@ sys_env_lease(struct Env *src, envid_t *dst_id)
 	e->env_hostip = src->env_hostip;
 	e->env_alien = 1; // Mark as alien
 	e->env_hostport = src->env_hostport;
-
 	e->env_hosteid = src->env_hosteid;
 
 	*dst_id = e->env_id;

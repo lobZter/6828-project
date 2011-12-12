@@ -528,7 +528,8 @@ try_send_ipc(envid_t src_id, uintptr_t va, int perm)
 	// Status must be ENV_LEASED
 	if (e.env_status != ENV_LEASED && 
 	    !(e.env_alien && // alien check
-	      ((e.env_hosteid ^ packet.pkt_dst) < 0x000fffff))) {
+	      ((e.env_hosteid & 0xfff00000) ==
+	       (packet.pkt_dst & 0xfff00000)))) {
 		cprintf("Sending IPC via DJOS to unleased process"
 			" or from non-alien!\n", 
 			e.env_id);
