@@ -131,6 +131,8 @@ connect_serv(uint32_t ip, uint32_t port)
 		return -E_FAIL;
 	}
 
+	cprintf("Connected to server...\n");
+	
 	return clientsock;
 }
 void

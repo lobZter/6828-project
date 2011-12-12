@@ -14,6 +14,16 @@ umain(int argc, char **argv)
 			thisenv->env_id);
 		val = ipc_recv(NULL, NULL, NULL);
 		cprintf("papa sent me %x\n", val);
+		
+		id = fork();
+		if (!id) {
+			while (sys_migrate(&thisenv) != 0) {
+				cprintf("retrying...\n");
+			}
+			cprintf("hello world! i am grand child environment "
+				"%08x\n", 
+				thisenv->env_id);
+		}
 	}
 	else {
 		cprintf("hello world! i am parent environment %08x\n", 

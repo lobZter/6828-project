@@ -730,9 +730,13 @@ sys_migrate(void *thisenv)
 	*((envid_t *) IPCSND) = curenv->env_id;
 	*((void **)(IPCSND + sizeof(envid_t))) = thisenv;
 
+	cprintf("sys_migrate: sending to josclient\n");
+
 	//can't write to page
 	r = sys_ipc_try_send(jdos_client, CLIENT_LEASE_REQUEST, 
 			     (void *) IPCSND, PTE_U|PTE_P); 
+
+	cprintf("sys_migrate: ipc status reply %d\n", r);
 
 	sys_page_unmap(curenv->env_id, (void *) IPCSND);
 
