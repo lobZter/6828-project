@@ -410,6 +410,7 @@ try_send_lease_completed(envid_t envid)
 		*((envid_t *) (buffer + 1)) = e.env_hosteid;
 		r = send_buff(buffer, 1 + sizeof(envid_t));
 		ctries++;
+		if (!r) break;
 	}
 
 	if (ctries > RETRIES) {
