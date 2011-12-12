@@ -247,11 +247,21 @@ send_pages(envid_t envid)
 }
 
 int
-send_done_request(envid_t envid)
+send_done_request(envid_t envid, uint8_t code)
 {
 	char buffer[BUFFSIZE];
 	
-	buffer[0] = DONE_LEASE;
+	switch (code)
+	{
+	case DONE_LEASE:
+		goto correct_code;
+	case DONE_IPC:
+		goto correct_code;
+	default:
+		return -E_INVAL;
+	}
+correct_code:
+	buffer[0] = code;
 	*((envid_t *) (buffer + 1)) = envid;
 	return send_buff(buffer, 1 + sizeof(envid_t));
 }
@@ -281,7 +291,7 @@ send_env(struct Env *env)
 		r = send_pages(env->env_id);
 		if (r < 0) goto error;
 
-		r = send_done_request(env->env_id);
+		r = send_done_request(env->env_id, DONE_LEASE);
 		if (r < 0) goto error;
 
 		break;
@@ -341,20 +351,46 @@ try_send_lease(envid_t envid)
 	}
 
 }
-/*
+int
+send_ipc_req(envid_t src_id, envid_t dst_id, int32_t val)
+{
+	char buffer[sizeof(struct ipc_packet) + 1];
+	int r;
+	struct ipc_packet *packet;
+
+	// Clear buffer
+	memset(buffer, 0, sizeof(struct ipc_packet) + 1);
+	
+	*((char *) buffer) = START_IPC;
+	packet = (struct ipc_packet *) (buffer + 1);
+	packet->src_id = src_id;
+	packet->dst_id = dst_id;
+	packet->val = va;
+
+	if (debug){
+		cprintf("Sending IPC Start: \n"
+			"  src_id: %x\n"
+			"  src_id: %x\n"
+			"  val: %d\n",
+			src_id, dst_id, val);
+	}
+	
+	return send_buff(buffer, 1 + sizeof(struct ipc_packet));
+}
+
 void
-try_send_ipc(uintptr_t va)
+try_send_ipc(envid_t src_id, uintptr_t va, int perm)
 {
 	int r, cretry = 0;
-	uintptr_t addr;
 	
 	while (cretry <= RETRIES) {
 		cretry++;
 
-		r = send_ipc_req(env->env_id, env);
+		r = send_ipc_req(src_id, *((envid_t *) va), 
+				 *((int32_t *) (va + sizeof(envid_t))));
 		if (r < 0) goto error;
 		
-		r = send_done_request(env->env_id);
+		r = send_done_request(src_id, DONE_IPC);
 		if (r < 0) goto error;
 
 		break;
@@ -366,7 +402,7 @@ try_send_ipc(uintptr_t va)
 
 	return 0;
 }
-*/
+
 void
 process_request()
 {
@@ -383,7 +419,7 @@ process_request()
 	case CLIENT_LEASE_COMPLETED:
 		return;
 	case CLIENT_SEND_IPC:
-//		try_send_ipc((uintptr_t) IPCRCV, perm);
+		try_send_ipc(sender, (uintptr_t) IPCRCV, perm);
 		return;
 		
 	default:

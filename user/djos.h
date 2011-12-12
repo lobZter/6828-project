@@ -31,7 +31,7 @@
 #define ABORT_LEASE 3
 #define EXECUTED_LEASE 4
 #define START_IPC 5
-#define DONE_IPC DONE_LEASE
+#define DONE_IPC 6
 
 #define CLIENT_LEASE_REQUEST 0
 #define CLIENT_LEASE_COMPLETED 1
@@ -42,6 +42,10 @@
 #define E_NO_LEASE 201
 #define E_FAIL 202
 
-
+struct ipc_packet {
+	envid_t src_id;
+	envid_t dst_id;
+	envid_t val;
+}
 
 #endif // JOS_USER_DJOS_H
