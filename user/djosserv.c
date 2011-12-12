@@ -318,7 +318,7 @@ process_completed_lease(char *buffer)
 			"  env_id: %x\n",
 			src_id);
 	}
-
+	cprintf("destoring shit %x\n", src_id);
 	sys_env_destroy(src_id);
 
 	return 0;
@@ -348,6 +348,7 @@ process_request(char *buffer)
 	case ABORT_LEASE:
 		return process_abort_lease(buffer);
 	case COMPLETED_LEASE:
+		cprintf("process completed\n");
 		return process_completed_lease(buffer);
 	default:
 		return -E_BAD_REQ;
