@@ -180,10 +180,8 @@ process_start_lease(char *buffer)
 	lease_map[i].stime = sys_time_msec();
 	lease_map[i].thisenv = tenv;
 
-	if (debug) {
-		cprintf("New lease mapped: %x->%x\n",
-			lease_map[i].src, lease_map[i].dst);
-	}
+	cprintf("New lease received! Mapped %08x->%08x.\n",
+		lease_map[i].src, lease_map[i].dst);
 
 	return 0;
 }
@@ -342,6 +340,8 @@ process_completed_lease(char *buffer)
 			envid);
 	}
 
+	cprintf("Process %08x completed!\n", envid);
+
 	e = (struct Env *) &envs[ENVX(envid)];
 	
 	if (e->env_status == ENV_LEASED) {
@@ -377,7 +377,6 @@ process_request(char *buffer)
 	case START_IPC:
 		return process_ipc_start(buffer);
 	case COMPLETED_LEASE:
-		cprintf("process completed\n");
 		return process_completed_lease(buffer);
 	default:
 		return -E_BAD_REQ;
