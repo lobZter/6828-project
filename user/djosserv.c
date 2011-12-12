@@ -436,8 +436,9 @@ umain(int argc, char **argv)
 		// Check if some process done
 		check_lease_complete();
 
-		cprintf("Waiting for client...\n");
-
+		if (debug) {
+			cprintf("Waiting for client...\n");
+		}
 		// Wait for client connection
 		unsigned int clientlen = sizeof(echoclient);
 		if ((clientsock =
@@ -447,7 +448,9 @@ umain(int argc, char **argv)
 		}
 
 		// Handle client connection
-		cprintf("Client connected: Handling...\n");
+		if (debug) {
+			cprintf("Client connected: Handling...\n");
+		}
 		handle_client(clientsock);
 	}
 
