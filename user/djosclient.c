@@ -391,19 +391,18 @@ try_send_lease(envid_t envid, void *thisenv)
 
 }
 
-<<<<<<< HEAD
 int
-send_ipc_start(struct ipc_packet *packet)
+send_ipc_start(struct ipc_pkt *packet)
 {
-	char buffer[sizeof(struct ipc_packet) + 1];
+	char buffer[sizeof(struct ipc_pkt) + 1];
 	int r;
 
 	// Clear buffer
-	memset(buffer, 0, sizeof(struct ipc_packet) + 1);
+	memset(buffer, 0, sizeof(struct ipc_pkt) + 1);
 	
 	*((char *) buffer) = START_IPC;
 	memmove((void *) (buffer + 1), 
-		(void *) packet, sizeof(struct ipc_packet));
+		(void *) packet, sizeof(struct ipc_pkt));
 
 	if (debug){
 		cprintf("Sending IPC Start: \n"
@@ -413,7 +412,7 @@ send_ipc_start(struct ipc_packet *packet)
 			packet->pkt_src, packet->pkt_dst, packet->pkt_val);
 	}
 	
-	return send_buff(buffer, 1 + sizeof(struct ipc_packet));
+	return send_buff(buffer, 1 + sizeof(struct ipc_pkt));
 }
 
 void
@@ -465,7 +464,7 @@ end:
 }
 
 int
-send_ipc_req(struct ipc_packet *packet)// need to pass IP! , uint32_t ip)
+send_ipc_req(struct ipc_pkt *packet)// need to pass IP! , uint32_t ip)
 {
 	int r, cretry = 0;
 	
@@ -491,16 +490,16 @@ void
 try_send_ipc(envid_t src_id, uintptr_t va, int perm)
 {
 	struct Env e;
-	char buff[sizeof(struct ipc_packet)];
+	char buff[sizeof(struct ipc_pkt)];
 	uint32_t ip;
 	int r;
 
-	struct ipc_packet *packet = (struct ipc_packet *) buff;
+	struct ipc_pkt *packet = (struct ipc_pkt *) buff;
 	
 	packet->pkt_src = src_id;
 	packet->pkt_dst = *((envid_t *) va);
 	packet->pkt_val = *((int32_t *) (va + sizeof(envid_t)));
-	packet->pkt_va = NULL;
+	packet->pkt_va = 0x0;
 	packet->pkt_perm = perm;
 
 	// Get envid from ipc *value*, check env exists

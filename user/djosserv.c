@@ -307,21 +307,23 @@ int
 process_ipc_start(char *buffer)
 {
 	envid_t dst;
-	struct ipc_packet packet = *((struct ipc_packet *) (buffer + 1));
-	if((r = find_lease(packet.dst_id)) < 0)
+	int r;
+
+	struct ipc_pkt packet = *((struct ipc_pkt *) (buffer + 1));
+	if((r = find_lease(packet.pkt_dst)) < 0)
 		return -E_INVAL;
 	dst = lease_map[r].dst;
-	ipc_send(dst, packet.pkt_val, packet.pkt_va, packet.pkt_perm);
+//	ipc_send(dst, packet.pkt_val, packet.pkt_va, packet.pkt_perm);
 
 	if (debug) {
 		cprintf("New IPC packet: \n"
 			"  src_id: %x\n"
 			"  dst_id: %x\n"
 			"  local dst: %x\n"
-			"  val: %d\n"
+			"  val: %d\n",
 			packet.pkt_src, packet.pkt_dst, dst, packet.pkt_val);
 	}
-	
+	return 0;	
 }
 int
 process_completed_lease(char *buffer)
@@ -366,7 +368,7 @@ process_request(char *buffer)
 		return process_done_lease(buffer);
 	case ABORT_LEASE:
 		return process_abort_lease(buffer);
-	case IPC_START:
+	case START_IPC:
 		return process_ipc_start(buffer);
 	case COMPLETED_LEASE:
 		cprintf("process completed\n");
