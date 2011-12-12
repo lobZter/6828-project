@@ -105,7 +105,6 @@ check_lease_complete()
 
 		// See if env is free by now
 		if (lease_map[i].status == LE_DONE) {
-//			if (e->env_parent_id != thisenv->env_id ||
 			if (e->env_alien != 1 ||
 			    e->env_status == ENV_FREE) {
 				if (debug) {
@@ -165,9 +164,7 @@ process_start_lease(char *buffer)
 	// Env must have status = ENV_SUSPENDED
 	if (req_env.env_status != ENV_SUSPENDED) return -E_BAD_REQ;
 
-	// Set parent_id of env to self (doesn't have notion of parent_id
-	// anymore
-//	req_env.env_parent_id = thisenv->env_id;	
+	// Set hosteid
 	req_env.env_hosteid = src_id;
 
 	// If there is any free env, copy over request env.
