@@ -85,7 +85,7 @@ i386_init(void)
 	// ENV_CREATE(user_echosrv, ENV_TYPE_USER);
 	// ENV_CREATE(user_httpd, ENV_TYPE_USER);
 	// ENV_CREATE(user_icode_exec, ENV_TYPE_USER);
-	// ENV_CREATE(user_djosserv, ENV_TYPE_JDOSS);
+	ENV_CREATE(user_djosserv, ENV_TYPE_JDOSS);
 	ENV_CREATE(user_djosclient, ENV_TYPE_JDOSC);
 	ENV_CREATE(user_hello, ENV_TYPE_USER);
 #endif // TEST*

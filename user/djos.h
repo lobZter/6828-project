@@ -1,10 +1,10 @@
 #ifndef JOS_USER_DJOS_H
 #define JOS_USER_DJOS_H
 
-#define debug 1
+#define debug 0
 
-#define SERVIP 0x12bb0047 // Server ip
-#define SERVPORT 26591    // Server port  
+#define SERVIP 0x12bb0020 // Server ip
+#define SERVPORT 25281    // Server port  
 
 /* Common params */
 #define BUFFSIZE 1518   // Max packet size
