@@ -21,8 +21,9 @@ static struct Env *env_free_list;	// Free environment list
 					// (linked by Env->env_link)
 
 #define ENVGENSHIFT	12		// >= LOGNENV
-#define HOSTADDRSHIFT   10              // >= LOGNENV
-#define HOSTADDRMASK    0xFFFFF         // Low 20 bits of MAC address
+#define ENVGENMASK      0xFF000         // Low 20-12 bits
+#define HOSTADDRSHIFT   20              // >= ENVMASK highest 1 bit
+#define HOSTADDRMASK    0x3FF           // Low 10 bits of MAC address
 
 #define debug 0
 
@@ -226,7 +227,7 @@ env_setup_vm(struct Env *e)
 int
 env_alloc(struct Env **newenv_store, envid_t parent_id)
 {
-//	int32_t generation;
+	uint32_t generation;
 	int r;
 	struct Env *e;
 
@@ -238,14 +239,11 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 		return r;
 
 	// Generate an env_id for this environment.
-/*	generation = (e->env_id + (1 << ENVGENSHIFT)) & ~(NENV - 1);
-	if (generation <= 0)	// Don't create a negative env_id.
-		generation = 1 << ENVGENSHIFT;
+	generation = e->env_id & ENVGENMASK;
+	generation += 1 << ENVGENSHIFT;
 	e->env_id = generation | (e - envs);
-*/
 
 	// Generate env_id for distributed JOS
-	e->env_id = (e - envs); // Lower LOGNENV bits
 	e->env_id |= (e1000[E1000_RAL] & HOSTADDRMASK) << HOSTADDRSHIFT;
 
 	if (e->env_id < 0) {
