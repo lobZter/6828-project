@@ -182,3 +182,9 @@ sys_migrate()
 {
 	return syscall(SYS_migrate, 1, 0, 0, 0, 0, 0);
 }
+
+int
+sys_lease_complete()
+{
+	return syscall(SYS_lease_complete, 1, 0, 0, 0, 0, 0);
+}

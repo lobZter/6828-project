@@ -28,7 +28,7 @@
 #define START_LEASE 1
 #define DONE_LEASE 2
 #define ABORT_LEASE 3
-#define EXECUTED_LEASE 4
+#define COMPLETED_LEASE 4
 #define START_IPC 5
 #define DONE_IPC DONE_LEASE
 

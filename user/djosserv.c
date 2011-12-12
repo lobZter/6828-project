@@ -294,6 +294,26 @@ process_abort_lease(char *buffer)
 
 
 int
+process_completed_lease(char *buffer)
+{
+	int i;
+	envid_t src_id;
+
+	// Destory env
+	src_id = *((envid_t *) buffer);
+
+	if (debug) {
+		cprintf("New lease completed request: \n"
+			"  env_id: %x\n",
+			src_id);
+	}
+
+	sys_env_destroy(src_id);
+
+	return 0;
+}
+
+int
 process_request(char *buffer)
 {
 	char req_type;
@@ -316,6 +336,8 @@ process_request(char *buffer)
 		return process_done_lease(buffer);
 	case ABORT_LEASE:
 		return process_abort_lease(buffer);
+	case COMPLETED_LEASE:
+		return process_completed_lease(buffer);
 	default:
 		return -E_BAD_REQ;
 	}

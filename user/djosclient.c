@@ -61,6 +61,18 @@ delete_lease(envid_t envid)
 	return -1;
 }
 
+int                                                                            
+find_lease(envid_t src_id)
+{
+        int i;
+        for (i = 0; i < SLEASES; i++) {
+                if (lease_map[i].env_id == src_id) {
+                        return i;
+                }
+        }
+        return -1;                                                             
+}
+
 // Super naive for now
 void
 check_lease_complete() 
@@ -328,12 +340,13 @@ try_send_lease(envid_t envid)
 
 	// Ids must match
 	if (e.env_id != envid) {
-		die("Env id mismatch!");
+		cprintf("Env id mismatch!");
+		return;
 	}
 
 	// Status must be ENV_LEASED
 	if (e.env_status != ENV_SUSPENDED) {
-		cprintf("Failed to lease envid %x. Not leased!\n", 
+		cprintf("Failed to lease envid %x. Not suspended!\n", 
 			envid);
 		r = -E_FAIL;
 	}
@@ -362,6 +375,56 @@ try_send_lease(envid_t envid)
 	}
 
 }
+
+void
+try_send_lease_completed(envid_t envid)
+{
+	struct Env e;
+	int r, i, ctries = 0;
+	char buffer[BUFFSIZE];
+	
+	memmove((void *) &e, (void *) &envs[ENVX(envid)], 
+		sizeof(struct Env));
+
+	// Ids must match
+	if (e.env_id != envid) {
+		cprintf("Env id mismatch!");
+		return; // That env doesn't exist
+	}
+
+	// Status must be ENV_LEASED
+	if (e.env_status != ENV_SUSPENDED) {
+		cprintf("Failed to lease complete envid %x. Not suspended!\n", 
+			envid);
+		r = -E_FAIL;
+		goto end;
+	}
+
+	if ((i = find_lease(envid)) < 0) {
+		r = -E_FAIL;
+		goto end;
+	}
+
+	while (ctries <= RETRIES) {
+		buffer[0] = COMPLETED_LEASE;
+		*((envid_t *) (buffer + 1)) = envid;
+		r = send_buff(buffer, 1 + sizeof(envid_t));
+		ctries++;
+	}
+
+	if (ctries > RETRIES) r = -E_FAIL;
+
+end:
+	if (r < 0) {
+		cprintf("Complete lease to server failed! Aborting...\n");
+		sys_env_unsuspend(envid, ENV_RUNNABLE, -E_INVAL);
+	}
+	else {
+		// Do what?
+		sys_env_unsuspend(envid, ENV_RUNNABLE, 0);
+	}
+}
+
 /*
 void
 try_send_ipc(uintptr_t va)
@@ -402,6 +465,7 @@ process_request()
 		try_send_lease(*((envid_t *) IPCRCV));
 		return;
 	case CLIENT_LEASE_COMPLETED:
+		try_send_lease_completed(*((envid_t *) IPCRCV));
 		return;
 	case CLIENT_SEND_IPC:
 //		try_send_ipc((uintptr_t) IPCRCV, perm);

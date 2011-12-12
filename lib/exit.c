@@ -5,6 +5,12 @@ void
 exit(void)
 {
 	close_all();
+
+	// Check if is leased task and completed
+	if (thisenv->env_alien) {
+		
+	}
+
 	sys_env_destroy(0);
 }
 
