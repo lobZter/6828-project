@@ -562,7 +562,9 @@ process_request()
 	int icode, perm;
 	envid_t sender;
 
+	cprintf("about to wait fo receive\n");
 	icode = ipc_recv(&sender, (void *) IPCRCV, &perm);
+	cprintf("rcv request for %d\n", icode);
 
 	switch(icode)
 	{
