@@ -523,8 +523,6 @@ try_send_ipc(envid_t src_id, uintptr_t va, int perm)
 	memmove((void *) &s, (void *) &envs[ENVX(src_id)], 
 		sizeof(struct Env));
 
-	cprintf("source id %x\n", src_id);
-
 	if (s.env_alien) {
 		packet.pkt_src = s.env_hosteid;
 		packet.pkt_fromalien = 1;
