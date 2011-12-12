@@ -3,8 +3,9 @@
 
 #define debug 0
 
-#define SERVIP 0x12bb001f // Server ip
-#define SERVPORT 26591    // Server port  
+#define SERVIP 0x12bb0016 // Server ip
+#define SERVPORT 25281    // Server port
+
 
 /* Common params */
 #define BUFFSIZE 1518   // Max packet size

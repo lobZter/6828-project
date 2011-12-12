@@ -255,8 +255,10 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 	}
 
 	// Set hostip for DJOS
-	e->env_hostip = 0x10000005;
-
+	e->env_hostip = 0;
+	e->env_alien = 0;
+	e->env_hosteid = 0;
+	
 	// Set the basic status variables.
 	e->env_parent_id = parent_id;
 	e->env_type = ENV_TYPE_USER;

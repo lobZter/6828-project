@@ -592,6 +592,7 @@ sys_env_lease(struct Env *src, envid_t *dst_id)
 
 	e->env_hostip = src->env_hostip;
 	e->env_alien = 1; // Mark as alien
+	e->env_hosteid = src->env_hosteid;
 
 	*dst_id = e->env_id;
 

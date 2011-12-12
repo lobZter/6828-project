@@ -407,7 +407,7 @@ try_send_lease_completed(envid_t envid)
 
 	while (ctries <= RETRIES) {
 		buffer[0] = COMPLETED_LEASE;
-		*((envid_t *) (buffer + 1)) = envid;
+		*((envid_t *) (buffer + 1)) = e.env_hosteid;
 		r = send_buff(buffer, 1 + sizeof(envid_t));
 		ctries++;
 	}

@@ -76,6 +76,7 @@ struct Env {
 	// Distributed JOS
 	uint32_t env_hostip;            // Host IPv4 address
 	bool env_alien;                 // Alien? From another planet
+	envid_t env_hosteid;            // Host env id
 };
 
 #endif // !JOS_INC_ENV_H

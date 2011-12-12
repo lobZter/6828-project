@@ -159,6 +159,7 @@ process_start_lease(char *buffer)
 	// Set parent_id of env to self (doesn't have notion of parent_id
 	// anymore
 	req_env.env_parent_id = thisenv->env_id;	
+	req_env.env_hosteid = src_id;
 
 	// If there is any free env, copy over request env.
 	if (sys_env_lease(&req_env, &dst_id)) {
@@ -302,11 +303,11 @@ process_completed_lease(char *buffer)
 	// Destory env
 	src_id = *((envid_t *) buffer);
 
-	if (debug) {
+//	if (debug) {
 		cprintf("New lease completed request: \n"
 			"  env_id: %x\n",
 			src_id);
-	}
+//	}
 
 	sys_env_destroy(src_id);
 
