@@ -18,6 +18,8 @@ umain(int argc, char **argv)
 		ipc_send(thisenv->env_parent_id, val + 02100, NULL, 0x0);
 		cprintf("sending parent 200\n");
 		
+		val = ipc_recv(NULL, NULL, NULL);
+                cprintf("parent sent me %x\n", val);
 	}
 	else {
 		cprintf("hello world! i am parent environment %08x\n", 
@@ -27,5 +29,8 @@ umain(int argc, char **argv)
 		
 		val = ipc_recv(NULL, NULL, NULL);
 		cprintf("child sent me %x\n", val);
+
+		ipc_send(id, val + 0x100, NULL, 0x0);
+		cprintf("send child 100\n");
 	}
 }
