@@ -392,6 +392,16 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	pte_t *pte;
 	struct Page *pp;
 
+	envid_t jdos_client = 0;
+	struct Env *e;
+	int i, r;
+
+	if (curenv->env_alien && 
+	     ((curenv->env_hosteid & 0xfff00000) == 
+	      (envid & 0xfff00000))) {
+		goto djos_send;
+	}
+
 	// Is receiver valid?
 	if (envid2env(envid, &rcv, 0) < 0) {
 		return -E_BAD_ENV;
@@ -401,14 +411,8 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 		return -E_IPC_NOT_RECV;
 	}
 
-	if ((rcv->env_status == ENV_LEASED) || // is leased?
-	    (curenv->env_alien && // is lessee? (match mac addr bits)
-	     ((curenv->env_hosteid & 0xfff00000) == 
-	      (envid & 0xfff00000)))) {
-		envid_t jdos_client = 0;
-		struct Env *e;
-		int i, r;
-
+	if (rcv->env_status == ENV_LEASED) { // is leased?
+	djos_send:
 		for (i = 0; i < NENV; i++) {
 			if (envs[i].env_type == ENV_TYPE_JDOSC) {
 				jdos_client = envs[i].env_id;
@@ -427,7 +431,7 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 		sys_page_alloc(curenv->env_id, (void *) IPCSND, 
 			       PTE_U|PTE_P|PTE_W);
 
-		*((envid_t *) IPCSND) = rcv->env_id;
+		*((envid_t *) IPCSND) = envid;
 		*((uint32_t *)(IPCSND + sizeof(envid_t))) = value;
 		*((unsigned *)(IPCSND + sizeof(envid_t) +
 				   sizeof(uint32_t))) = perm;

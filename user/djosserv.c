@@ -333,8 +333,10 @@ process_ipc_start(char *buffer)
 			"  src_id: %x\n"
 			"  dst_id: %x\n"
 			"  local dst: %x\n"
-			"  val: %d\n",
-			packet.pkt_src, packet.pkt_dst, dst, packet.pkt_val);
+			"  val: %d\n"
+			"  fromalien: %d\n",
+			packet.pkt_src, packet.pkt_dst, dst, packet.pkt_val,
+			packet.pkt_fromalien);
 	}
 	
 	if (!packet.pkt_va) {
