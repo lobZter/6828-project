@@ -39,8 +39,8 @@
 #define E_FAIL 202
 
 struct ipc_pkt {
-	envid_t pkt_src;
 	envid_t pkt_dst;
+	envid_t pkt_src;
 	envid_t pkt_val;
 	uintptr_t pkt_va;
 	int pkt_perm;

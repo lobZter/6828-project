@@ -312,7 +312,7 @@ process_ipc_start(char *buffer)
 
 	struct ipc_pkt packet = *((struct ipc_pkt *) (buffer + 1));
 	if((r = find_lease(packet.pkt_dst)) < 0)
-		return -E_INVAL;
+		return -E_FAIL;
 	dst = lease_map[r].dst;
 //	ipc_send(dst, packet.pkt_val, packet.pkt_va, packet.pkt_perm);
 
