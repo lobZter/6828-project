@@ -79,11 +79,13 @@ connect_serv(uint32_t ip, uint32_t port)
         client.sin_addr.s_addr = htonl(ip);             // client ip
         client.sin_port = htons(port);                  // client port
 
-        cprintf("Connecting to server at %x...\n", 0x12bb0048);
+        cprintf("Connecting to server at %x:%d...\n", ip, port);
 
         if ((r = connect(clientsock, (struct sockaddr *) &client,
-                         sizeof(client))) < 0)               
-                die("Connection to server failed!");
+                         sizeof(client))) < 0) {              
+                cprintf("Connection to server failed!");
+		return -E_FAIL;
+	}
 
 	return clientsock;
 }
@@ -106,6 +108,7 @@ send_buff(const void *req, int len)
 {
 	int cretry = 0;
 	int sock = connect_serv(SERVIP, SERVPORT);
+	if (sock < 0) return -E_FAIL;
 	char buffer[BUFFSIZE];
 	issue_request(sock, req, len);
 
@@ -132,6 +135,7 @@ send_buff(const void *req, int len)
 			}
 
 			sock = connect_serv(SERVIP, SERVPORT);
+			if (sock < 0) return -E_FAIL;
 			issue_request(sock, req, len);
 			continue; // retry
 		}
