@@ -79,7 +79,7 @@ connect_serv(uint32_t ip, uint32_t port)
         client.sin_addr.s_addr = htonl(ip);             // client ip
         client.sin_port = htons(port);                  // client port
 
-        cprintf("Connecting to server at %x...\n", 0x12bb0048);
+        cprintf("Connecting to server at %x:%d...\n", ip, port);
 
         if ((r = connect(clientsock, (struct sockaddr *) &client,
                          sizeof(client))) < 0) {              
