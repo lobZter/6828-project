@@ -12,7 +12,7 @@ umain(int argc, char **argv)
 		cprintf("hello world! i am child environment %08x\n", 
 			thisenv->env_id);
 		
-		id = fork();
+/*		id = fork();
 		if (!id) {
 			while (sys_migrate(&thisenv) != 0) {
 				cprintf("retrying...\n");
@@ -21,13 +21,13 @@ umain(int argc, char **argv)
 				"%08x\n", 
 				thisenv->env_id);
 		}
-
+*/
 	}
 	else {
 		cprintf("hello world! i am parent environment %08x\n", 
 			thisenv->env_id);
 
-/*		id = fork();
+		id = fork();
 		if (!id) {
 			while (sys_migrate(&thisenv) != 0) {
 				cprintf("retrying...\n");
@@ -36,6 +36,6 @@ umain(int argc, char **argv)
 				"%08x\n", 
 				thisenv->env_id);
 		}
-*/
+
 	}
 }
