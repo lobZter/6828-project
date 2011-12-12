@@ -50,6 +50,7 @@ destroy_lease_id(int i)
 	lease_map[i].dst = 0;
 	lease_map[i].status = LE_FREE;
 	lease_map[i].stime = 0;
+	lease_map[i].thisenv = 0;
 }
 
 void
@@ -270,7 +271,7 @@ process_done_lease(char *buffer)
 	if (!lease_map[i].dst) return -E_FAIL;
 	lease_map[i].status = LE_DONE;
 
-	// Fix thisenv
+	// Fix thisenv ptr
 	sys_env_set_thisenv(lease_map[i].dst, lease_map[i].thisenv);
 
 	// Change status to ENV_RUNNABLE
@@ -308,18 +309,23 @@ int
 process_completed_lease(char *buffer)
 {
 	int i;
-	envid_t src_id;
+	envid_t envid;
+	struct Env *e;
 
 	// Destory env
-	src_id = *((envid_t *) buffer);
+	envid = *((envid_t *) buffer);
 
 	if (debug) {
 		cprintf("New lease completed request: \n"
 			"  env_id: %x\n",
-			src_id);
+			envid);
 	}
 
-	sys_env_destroy(src_id);
+	e = &envs[ENVX(envid)];
+	
+	if (e->env_status == ENV_LEASED) {
+		sys_env_destroy(src_id);
+	}
 
 	return 0;
 }
