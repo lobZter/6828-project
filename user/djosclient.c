@@ -204,6 +204,8 @@ send_lease_req(envid_t envid, void *thisenv, struct Env *env)
 			e->env_id, e->env_parent_id,
 			e->env_status, e->env_hostip);
 	}
+
+	cprintf("Sending lease request for process %08x\n", envid);
 	
 	return send_buff(buffer, LEASE_REQ_SZ);
 }
@@ -406,6 +408,9 @@ try_send_lease_completed(envid_t envid)
 		r = -E_FAIL;
 		goto end;
 	}
+
+	cprintf("Finished executing process %08x->%08x.\n", 
+		e.env_id, e.env_hosteid);
 
 	while (ctries <= RETRIES) {
 		buffer[0] = COMPLETED_LEASE;

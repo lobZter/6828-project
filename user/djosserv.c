@@ -61,27 +61,6 @@ destroy_lease(envid_t env_id)
 	destroy_lease_id(i);
 }
 
-int
-annihilate(envid_t envid) 
-{
-	int i;
-
-	i = find_lease(envid);
-	if (i < 0) {
-		return -E_BAD_REQ;
-	}
-
-	struct Env *e = (struct Env *) &envs[ENVX(envid)];
-
-	if (e->env_status == ENV_LEASED) {
-		i = sys_env_destroy(lease_map[i].dst);
-		if (i < 0) return -E_BAD_REQ;
-	}
-
-	destroy_lease_id(i);
-	return 0;
-}
-
 void 
 gc_lease_map(int ctime) {
 	int i;
@@ -385,7 +364,14 @@ process_completed_lease(char *buffer)
 
 	cprintf("Process %08x completed!\n", envid);
 
-	return annihilate(envid);
+	e = (struct Env *) &envs[ENVX(envid)];
+
+	if (e->env_status == ENV_LEASED) {
+		i = sys_env_destroy(envid);
+		if (i < 0) return -E_BAD_REQ;
+	}
+
+	return 0;
 }
 
 int
