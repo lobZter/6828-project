@@ -148,7 +148,7 @@ process_start_lease(char *buffer)
 
 	// Read thisenv
 	tenv = *((void **) buffer);
-	cprintf("tenv is %p\n", tenv);
+
 	if (debug) {
 		cprintf("New lease request: \n"
 			"  env_id: %x\n"
