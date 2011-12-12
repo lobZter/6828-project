@@ -617,19 +617,6 @@ sys_copy_mem(envid_t env_id, void* addr, void* buf, int perm, bool frombuf)
 	return 0;
 }
 
-int // server to check if lease is finished
-sys_env_is_leased(envid_t env_id)
-{
-	struct Env* e;
-
-	if (envid2env(env_id, &e, 1) < 0) {
-		if (e && !e->env_alien) return -1;
-		return 0;
-	}
-
-	return -1;
-}
-
 int // server call to get perms
 sys_get_perms(envid_t envid, void *va, int *perm) 
 {
@@ -765,8 +752,6 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 	case SYS_copy_mem:
 		return sys_copy_mem((envid_t) a1, (void *) a2, (void *) a3, 
 				    (int) a4, (bool) a5);
-	case SYS_env_is_leased:
-		return sys_env_is_leased((envid_t) a1);
 	case SYS_get_perms:
 		return sys_get_perms((envid_t) a1, (void *) a2, (int *) a3);
 	case SYS_env_unsuspend:

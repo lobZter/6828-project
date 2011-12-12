@@ -70,10 +70,12 @@ gc_lease_map(int ctime) {
 
 	// Check if some lease has not been DONE for too long
 	for (i = 0; i < SLEASES; i++) {
+		if (!lease_map[i].src) continue;
+
 		if (ctime - lease_map[i].stime > GCTIME &&
 		    lease_map[i].status == LE_BUSY) {
 			if (debug) {
-				cprintf("GCing entry %d: %x\n", 
+				cprintf("GCing entry at server %d: %x\n", 
 					i, lease_map[i].src);
 			}
 			destroy_lease_id(i);
@@ -86,15 +88,22 @@ void
 check_lease_complete() 
 {
 	int i;
+	struct Env *e;
 
 	if (debug) {
 		cprintf("Checking for completed leases...\n");
 	}
 
 	for (i = 0; i < SLEASES; i++) {
+		if (!lease_map[i].src) continue;
+
+		e = (struct Env *) &envs[ENVX(lease_map[i].dst)];
+
 		// See if env is free by now
 		if (lease_map[i].status == LE_DONE) {
-			if (!sys_env_is_leased(lease_map[i].dst)) {
+			if (e->env_parent_id != thisenv->env_id ||
+			    e->env_alien != 1 ||
+			    e->env_status == ENV_FREE) {
 				if (debug) {
 					cprintf("GCing completed lease "
 						"%d: %x\n",
