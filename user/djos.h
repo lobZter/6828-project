@@ -31,7 +31,7 @@
 #define ABORT_LEASE 3
 #define COMPLETED_LEASE 4
 #define START_IPC 5
-#define DONE_IPC DONE_LEASE
+#define DONE_IPC 6
 
 #define CLIENT_LEASE_REQUEST 0
 #define CLIENT_LEASE_COMPLETED 1
@@ -41,5 +41,13 @@
 #define E_BAD_REQ 200
 #define E_NO_LEASE 201
 #define E_FAIL 202
+
+struct ipc_pkt {
+	envid_t pkt_src;
+	envid_t pkt_dst;
+	envid_t pkt_val;
+	uintptr_t pkt_va;
+	int pkt_perm;
+};
 
 #endif // JOS_USER_DJOS_H

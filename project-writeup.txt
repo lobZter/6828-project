@@ -62,6 +62,9 @@ Req 4 Buffer
 Response
 int status, envid_t envid
 
+==IPC==
+Sys call will check env status (if leased/suspended) before completing the ipc_send.
+If env is leased, value send will change to CLIENT_SEND_IPC and data will contain target envid and original value of ipc.
 
 ==TODO==
 
