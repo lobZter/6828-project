@@ -8,22 +8,28 @@ umain(int argc, char **argv)
 	int val;
 
 	id = fork();
-	if (id == 0) {
+	if (!id) {
 		sys_migrate(&thisenv);
 		cprintf("hello world! i am child environment %08x\n", 
 			thisenv->env_id);
 		val = ipc_recv(NULL, NULL, NULL);
-		cprintf("papa sent me %x\n", val);
+		cprintf("parent sent me %x\n", val);
 
 		ipc_send(thisenv->env_parent_id, 0x200, NULL, 0x0);
-		cprintf("send parent 0x200\n");
+		cprintf("sending parent 200\n");
 		
+		id = fork();
+		if (!id) {
+			sys_migrate(&thisenv);
+			cprintf("hello world! i am a grand child environment"
+				" %08x\n", thisenv->env_id);
+		}
 	}
 	else {
 		cprintf("hello world! i am parent environment %08x\n", 
 			thisenv->env_id);
 		ipc_send(id, 0x100, NULL, 0x0);
-		cprintf("send child 0x100\n");
+		cprintf("send child 100\n");
 		
 		val = ipc_recv(NULL, NULL, NULL);
 		cprintf("child sent me %x\n", val);
