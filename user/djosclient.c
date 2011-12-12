@@ -409,8 +409,8 @@ try_send_lease_completed(envid_t envid)
 		buffer[0] = COMPLETED_LEASE;
 		*((envid_t *) (buffer + 1)) = e.env_hosteid;
 		r = send_buff(buffer, 1 + sizeof(envid_t));
-		ctries++;
 		if (!r) break;
+		ctries++;
 	}
 
 	if (ctries > RETRIES) {
@@ -418,7 +418,6 @@ try_send_lease_completed(envid_t envid)
 		goto end;
 	}
 
-	cprintf("Sending completed for %x %x\n", e.env_id, e.env_hosteid);
 end:
 	if (r < 0) {
 		cprintf("Complete lease to server failed! Aborting...\n");

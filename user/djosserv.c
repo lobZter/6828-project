@@ -318,7 +318,7 @@ process_completed_lease(char *buffer)
 			"  env_id: %x\n",
 			src_id);
 	}
-	cprintf("destoring shit %x\n", src_id);
+
 	sys_env_destroy(src_id);
 
 	return 0;
