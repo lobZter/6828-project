@@ -3,7 +3,6 @@
 
 #define debug 0
 
-
 #define SERVIP 0x12bb001f // Server ip
 #define SERVPORT 26591    // Server port  
 

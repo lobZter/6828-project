@@ -166,12 +166,6 @@ sys_copy_mem(envid_t env_id, void *addr, void *buf, int perm, bool frombuf)
 }
 
 int
-sys_env_is_leased(envid_t env_id)
-{
-	return syscall(SYS_env_is_leased, 1, (uint32_t) env_id, 0, 0, 0, 0);
-}
-
-int
 sys_get_perms(envid_t envid, void *va, int *perm)
 {
 	return syscall(SYS_get_perms, 1, (uint32_t) envid, (uint32_t) va, (uint32_t) perm, 0, 0);

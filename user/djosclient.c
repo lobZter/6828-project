@@ -61,6 +61,27 @@ delete_lease(envid_t envid)
 	return -1;
 }
 
+// Super naive for now
+void
+check_lease_complete() 
+{
+	int i;
+	struct Env *e;
+
+	if (debug) {
+		cprintf("Checking for completed leases...\n");
+	}
+
+	for (i = 0; i < CLEASES; i++) {
+		if (!lease_map[i].env_id) continue;
+
+		e = (struct Env *) &envs[ENVX(lease_map[i].env_id)];
+		if (e->env_status != ENV_LEASED) {
+			lease_map[i].env_id = 0;
+			lease_map[i].lessee_ip = 0;
+		}
+	}
+}
 
 int
 connect_serv(uint32_t ip, uint32_t port)
@@ -435,8 +456,10 @@ umain(int argc, char **argv)
 	set_pgfault_handler(pg_handler);
 
 	while (1) {
-		cprintf("Waiting for requests...\n");
+		// GC completed leases
+		check_lease_complete();
 
+		cprintf("Waiting for requests...\n");
 		process_request();
 	}
 }

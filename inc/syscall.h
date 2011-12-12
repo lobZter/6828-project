@@ -24,7 +24,6 @@ enum {
 	SYS_net_try_receive,
 	SYS_get_mac,
 	SYS_env_lease,
-	SYS_env_is_leased,
 	SYS_copy_mem,
 	SYS_get_perms,
 	SYS_env_unsuspend,
