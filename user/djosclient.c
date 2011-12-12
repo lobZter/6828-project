@@ -154,8 +154,10 @@ send_buff(const void *req, int len)
 {
 	int cretry = 0;
 	int response;
+
 	int sock = connect_serv(SERVIP, SERVPORT);
 	if (sock < 0) return -E_FAIL;
+
 	char buffer[BUFFSIZE];
 	issue_request(sock, req, len);
 

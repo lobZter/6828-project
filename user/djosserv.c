@@ -545,6 +545,7 @@ umain(int argc, char **argv)
 		if (debug) {
 			cprintf("Client connected: Handling...\n");
 		}
+
 		handle_client(clientsock);
 	}
 
