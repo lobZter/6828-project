@@ -15,7 +15,7 @@ umain(int argc, char **argv)
 		val = ipc_recv(NULL, NULL, NULL);
 		cprintf("parent sent me %x\n", val);
 
-		ipc_send(thisenv->env_parent_id, val + 02100, NULL, 0x0);
+		ipc_send(thisenv->env_parent_id, 02200, NULL, 0x0);
 		cprintf("sending parent 200\n");
 		
 		val = ipc_recv(NULL, NULL, NULL);
@@ -30,7 +30,7 @@ umain(int argc, char **argv)
 		val = ipc_recv(NULL, NULL, NULL);
 		cprintf("child sent me %x\n", val);
 
-		ipc_send(id, val + 0x100, NULL, 0x0);
-		cprintf("send child 100\n");
+		ipc_send(id, val + 0x300, NULL, 0x0);
+		cprintf("send child 300\n");
 	}
 }
