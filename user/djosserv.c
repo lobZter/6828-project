@@ -13,6 +13,7 @@ struct lease_entry {
 	envid_t dst;
 	char status;
 	int stime;
+	void *thisenv;
 };
 
 struct lease_entry lease_map[SLEASES];
@@ -121,6 +122,7 @@ process_start_lease(char *buffer)
 	int i, entry;
 	struct Env req_env;
 	envid_t src_id, dst_id;
+	void *tenv;
 
 	// Check if an entry is available in lease map
 	entry = -1;
@@ -142,6 +144,9 @@ process_start_lease(char *buffer)
 
 	// Read struct Env from request
 	req_env = *((struct Env *) buffer);
+	buffer += sizeof(struct Env);
+
+	tenv = *((void **) buffer);
 
 	if (debug) {
 		cprintf("New lease request: \n"
@@ -171,11 +176,12 @@ process_start_lease(char *buffer)
 	lease_map[i].dst = dst_id;
 	lease_map[i].status = LE_BUSY;
 	lease_map[i].stime = sys_time_msec();
+	lease_map[i].thisenv = tenv;
 
-	if (debug) {
+//	if (debug) {
 		cprintf("New lease mapped: %x->%x\n",
 			lease_map[i].src, lease_map[i].dst);
-	}
+//	}
 
 	return 0;
 }

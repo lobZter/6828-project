@@ -189,7 +189,7 @@ send_buff(const void *req, int len)
 }
 
 int
-send_lease_req(envid_t envid, struct Env *env)
+send_lease_req(envid_t envid, void *thisenv, struct Env *env)
 {
 	char buffer[BUFFSIZE];
 	int r;
@@ -203,6 +203,8 @@ send_lease_req(envid_t envid, struct Env *env)
 	e = (struct Env *) (buffer + sizeof(envid_t) + 1);
 
 	memmove(e, (void *) env, sizeof(struct Env));
+	*((void **)(buffer + 1 + sizeof(struct Env) + sizeof(envid_t)))
+		= thisenv;
 
 	if (debug){
 		cprintf("Sending struct Env: \n"
@@ -301,7 +303,7 @@ send_abort_request(envid_t envid)
 }
 
 int
-send_env(struct Env *env)
+send_env(struct Env *env, void *thisenv)
 {
 	int r, cretry = 0;
 	uintptr_t addr;
@@ -309,7 +311,7 @@ send_env(struct Env *env)
 	while (cretry <= RETRIES) {
 		cretry++;
 
-		r = send_lease_req(env->env_id, env);
+		r = send_lease_req(env->env_id, thisenv, env);
 		if (r < 0) goto error;
 		
 		r = send_pages(env->env_id);
@@ -330,7 +332,7 @@ send_env(struct Env *env)
 }
 
 void
-try_send_lease(envid_t envid)
+try_send_lease(envid_t envid, void *thisenv)
 {
 	struct Env e;
 	int r;
@@ -359,7 +361,7 @@ try_send_lease(envid_t envid)
 		// Put in lease_map
 		if ((r = put_lease(envid, SERVIP)) >= 0) {
 			// Try sending env
-			r = send_env(&e);
+			r = send_env(&e, thisenv);
 		}
 	}
 
@@ -459,7 +461,8 @@ process_request()
 	switch(icode)
 	{
 	case CLIENT_LEASE_REQUEST:
-		try_send_lease(*((envid_t *) IPCRCV));
+		try_send_lease(*((envid_t *) IPCRCV), 
+			       *((void **) (IPCRCV + sizeof(envid_t))));
 		return;
 	case CLIENT_LEASE_COMPLETED:
 		try_send_lease_completed(*((envid_t *) IPCRCV));

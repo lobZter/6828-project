@@ -178,13 +178,19 @@ sys_env_unsuspend(envid_t envid, uint32_t status, uint32_t value)
 }
 
 int
-sys_migrate()
+sys_migrate(void *thisenv)
 {
-	return syscall(SYS_migrate, 1, 0, 0, 0, 0, 0);
+	return syscall(SYS_migrate, 1, (uint32_t) thisenv, 0, 0, 0, 0);
 }
 
 int
 sys_lease_complete()
 {
 	return syscall(SYS_lease_complete, 1, 0, 0, 0, 0, 0);
+}
+
+int
+sys_env_set_thisenv(envid_t envid, void *thisenv)
+{
+	return syscall(SYS_env_set_thisenv, 1, (uint32_t) envid,(uint32_t) thisenv, 0, 0, 0);
 }

@@ -660,7 +660,7 @@ sys_env_unsuspend(envid_t envid, uint32_t status, uint32_t value)
 }
 
 int // user call to lease self
-sys_migrate()
+sys_migrate(void *thisenv)
 {
 	envid_t jdos_client = 0;
 	struct Env *e;
@@ -682,6 +682,7 @@ sys_migrate()
 	curenv->env_status = ENV_SUSPENDED; 
 	sys_page_alloc(curenv->env_id, (void *) IPCSND, PTE_U|PTE_P|PTE_W);
 	*((envid_t *) IPCSND) = curenv->env_id;
+	*((void **)(IPCSND + sizeof(envid_t))) = thisenv;
 
 	//can't write to page
 	r = sys_ipc_try_send(jdos_client, CLIENT_LEASE_REQUEST, 
@@ -738,6 +739,13 @@ sys_lease_complete()
 	}
 
 	return 0;	
+}
+
+int
+sys_env_set_thisenv(envid_t envid, void *thisenv)
+{
+	*(struct Env **) thisenv = &envs[ENVX(envid)];
+	return 0;
 }
 
 // Dispatches to the correct kernel function, passing the arguments.
@@ -800,8 +808,10 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		return sys_get_perms((envid_t) a1, (void *) a2, (int *) a3);
 	case SYS_env_unsuspend:
 		return sys_env_unsuspend((envid_t) a1, (uint32_t) a2, (uint32_t) a3);
+	case SYS_env_set_thisenv:
+		return sys_env_set_thisenv((envid_t) a1, (void *) a2);
 	case SYS_migrate:
-		return sys_migrate();
+		return sys_migrate((void *) a1);
 	case SYS_lease_complete:
 		return sys_lease_complete();
 	default:
