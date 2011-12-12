@@ -530,7 +530,7 @@ try_send_ipc(envid_t src_id, uintptr_t va, int perm)
 	// Ids must match
 	if (e.env_id != packet.pkt_dst) {
 		cprintf("Env id mismatch in ipc %x, %x!\n",
-			e.env_id, envid);
+			e.env_id, packet.pkt_dst);
 		r = -E_BAD_ENV;
 	}
 
