@@ -332,20 +332,51 @@ try_send_lease(envid_t envid)
 
 }
 void
+try_send_ipc(uintptr_t va)
+{
+	int r, cretry = 0;
+	uintptr_t addr;
+	
+	while (cretry <= RETRIES) {
+		cretry++;
+
+		r = send_ipc_req(env->env_id, env);
+		if (r < 0) goto error;
+		
+		r = send_page_req(env->env_id, va, perm);
+		if (r < 0) goto error;
+
+		r = send_done_request(env->env_id);
+		if (r < 0) goto error;
+
+		break;
+	error:
+		send_abort_request(env->env_id);
+	}
+
+	if (cretry > RETRIES + 1) return -E_FAIL;
+
+	return 0;
+}
+void
 recv_ipc()
 {
-	int icode;
+	int icode, perm;
 	envid_t sender;
 
-	icode = ipc_recv(&sender, (void *) IPCRCV, NULL);
+	icode = ipc_recv(&sender, (void *) IPCRCV, &perm);
 	cprintf("Processing IPC %d request\n", icode);
 	switch(icode)
 	{
-	case IPC_LEASE_REQUEST:
+	case CLIENT_LEASE_REQUEST:
 		try_send_lease(*((envid_t *) IPCRCV));
 		return;
-	case IPC_LEASE_COMPLETED:
+	case CLIENT_LEASE_COMPLETED:
 		return;
+	case CLIENT_SEND_IPC:
+		try_send_ipc((uintptr_t) IPCRCV, perm);
+		return;
+		
 	default:
 		return;
 	}

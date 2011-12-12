@@ -13,6 +13,7 @@
 #include <kern/sched.h>
 #include <kern/time.h>
 #include <kern/e1000.h>
+#include <user/djos.h>
 
 // Print a string to the system console.
 // The string is exactly 'len' characters long.
@@ -687,9 +688,12 @@ sys_migrate()
 	if ((r = envid2env(jdos_client, &e, 0)) < 0) return r;
 
 	// Mark leased and try to migrate
-	curenv->env_status = ENV_LEASED; 
-	r = sys_ipc_try_send(jdos_client, curenv->env_id, (void *) UTOP, 0);
-	
+	curenv->env_status = ENV_LEASED;
+	sys_page_alloc(curenv->env_id, (void *) IPCSND, PTE_U|PTE_P|PTE_W);
+	*((envid_t *) IPCSND) = curenv->env_id;
+	r = sys_ipc_try_send(jdos_client, IPC_LEASE_REQUEST, 
+			     (void *) IPCSND, PTE_U|PTE_P); //can't write to page
+	sys_page_unmap(curenv->env_id, (void *) IPCSND);
 	// Failed to migrate, back to running!
 	if (r < 0) {
 		cprintf("sys_migrate: failed to send ipc %d\n", r);
