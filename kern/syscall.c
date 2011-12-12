@@ -280,7 +280,7 @@ sys_page_map(envid_t srcenvid, void *srcva,
 
 	// Env Ids valid and caller has perms to access them
 	if (envid2env(srcenvid, &srcenv, 1) < 0 || 
-		envid2env(dstenvid, &dstenv, check) < 0) {
+		envid2env(dstenvid, &dstenv, 1) < 0) {
 		return -E_BAD_ENV;
 	}
 		
