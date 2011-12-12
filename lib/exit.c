@@ -6,10 +6,9 @@ exit(void)
 {
 	// Check if is leased task and completed
 	if (thisenv->env_alien) {
-		cprintf("EXIT %x\n", thisenv->env_id);
 		sys_lease_complete();
 	}
-
+	cprintf("back to exiting\n");
 	close_all();
 	sys_env_destroy(0);
 }

@@ -592,6 +592,7 @@ sys_env_lease(struct Env *src, envid_t *dst_id)
 
 	e->env_hostip = src->env_hostip;
 	e->env_alien = 1; // Mark as alien
+	cprintf("EID %x\n", src->env_hosteid);
 	e->env_hosteid = src->env_hosteid;
 
 	*dst_id = e->env_id;
@@ -724,7 +725,7 @@ sys_lease_complete()
 	curenv->env_status = ENV_SUSPENDED; 
 	sys_page_alloc(curenv->env_id, (void *) IPCSND, PTE_U|PTE_P|PTE_W);
 	*((envid_t *) IPCSND) = curenv->env_id;
-	cprintf("SEND LC IPC %x\n", curenv->env_id);
+
 	// Can't write to page
 	r = sys_ipc_try_send(jdos_client, CLIENT_LEASE_COMPLETED, 
 			     (void *) IPCSND, PTE_U|PTE_P); 

@@ -358,6 +358,7 @@ try_send_lease(envid_t envid, void *thisenv)
 		// Set eax to 0, to appear migrate call succeed
 		e.env_tf.tf_regs.reg_eax = 0;
 		e.env_hostip = CLIENTIP; // Set my client ip
+		e.env_hostport = 0x7;
 			
 		// Put in lease_map
 		if ((r = put_lease(envid, SERVIP)) >= 0) {
