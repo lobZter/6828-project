@@ -146,8 +146,9 @@ process_start_lease(char *buffer)
 	req_env = *((struct Env *) buffer);
 	buffer += sizeof(struct Env);
 
+	// Read thisenv
 	tenv = *((void **) buffer);
-
+	cprintf("tenv is %p\n", tenv);
 	if (debug) {
 		cprintf("New lease request: \n"
 			"  env_id: %x\n"
@@ -268,6 +269,9 @@ process_done_lease(char *buffer)
 
 	if (!lease_map[i].dst) return -E_FAIL;
 	lease_map[i].status = LE_DONE;
+
+	// Fix thisenv
+	sys_env_set_thisenv(lease_map[i].dst, lease_map[i].thisenv);
 
 	// Change status to ENV_RUNNABLE
 	// We have transfered all required state so can start executing

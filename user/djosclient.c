@@ -216,7 +216,8 @@ send_lease_req(envid_t envid, void *thisenv, struct Env *env)
 			e->env_status, e->env_hostip);
 	}
 	
-	return send_buff(buffer, 1 + sizeof(struct Env) + sizeof(envid_t));
+	return send_buff(buffer, 1 + sizeof(struct Env) + 
+			 sizeof(envid_t) + sizeof(void **));
 }
 
 int

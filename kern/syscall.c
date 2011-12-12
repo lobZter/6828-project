@@ -744,7 +744,19 @@ sys_lease_complete()
 int
 sys_env_set_thisenv(envid_t envid, void *thisenv)
 {
-	*(struct Env **) thisenv = &envs[ENVX(envid)];
+	cprintf("chainging thisenv %p\n", thisenv);
+	void *pgva = (void *) ROUNDDOWN(thisenv, PGSIZE);
+
+	if (sys_page_map(envid, pgva, curenv->env_id, (void *) UTEMP, 
+			 PTE_P|PTE_U|PTE_W) < 0) 
+		return -E_INVAL;
+
+	*((struct Env **)(UTEMP + PGOFF(thisenv))) = &envs[ENVX(envid)];
+
+	if (sys_page_unmap(curenv->env_id, (void *) UTEMP) < 0)
+		return -E_INVAL;
+
+	cprintf("changed thienv\n");
 	return 0;
 }
 
