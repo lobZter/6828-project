@@ -79,7 +79,9 @@ connect_serv(uint32_t ip, uint32_t port)
         client.sin_addr.s_addr = htonl(ip);             // client ip
         client.sin_port = htons(port);                  // client port
 
-        cprintf("Connecting to server at %x:%d...\n", ip, port);
+	if (debug) {
+		cprintf("Connecting to server at %x:%d...\n", ip, port);
+	}
 
         if ((r = connect(clientsock, (struct sockaddr *) &client,
                          sizeof(client))) < 0) {              
@@ -116,14 +118,18 @@ send_buff(const void *req, int len)
         {
 		cretry++;
 
-		cprintf("Waiting for response from server...\n");   
-                
+		if (debug) {
+			cprintf("Waiting for response from server...\n");   
+                }
+
                 // Receive message
                 if (read(sock, buffer, BUFFSIZE) < 0)
                         panic("Failed to read");
 		close(sock);
 	       
-                cprintf("Received: %d\n", *((int *) buffer));
+		if (debug) {
+			cprintf("Received: %d\n", *((int *) buffer));
+		}
 
 		if (*((int *) buffer) == -E_FAIL) {
 			// server has already destroyed our lease
@@ -287,59 +293,111 @@ send_env(struct Env *env)
 }
 
 void
-umain(int argc, char **argv)
+try_send_lease(envid_t envid)
 {
 	struct Env e;
-	envid_t envid;
 	int r;
+
+	// Get envid from ipc *value*
+	memmove((void *) &e, (void *) &envs[ENVX(envid)], 
+		sizeof(struct Env));
+
+	// Ids must match
+	if (e.env_id != envid) {
+		die("Env id mismatch!");
+	}
+
+	// Status must be ENV_LEASED
+	if (e.env_status != ENV_SUSPENDED) {
+		cprintf("Failed to lease envid %x. Not leased!\n", 
+			envid);
+		r = -E_FAIL;
+	}
+	else {
+		// Set eax to 0, to appear migrate call succeed
+		e.env_tf.tf_regs.reg_eax = 0;
+		e.env_hostip = CLIENTIP; // Set my client ip
+			
+		// Put in lease_map
+		if ((r = put_lease(envid, SERVIP)) >= 0) {
+			// Try sending env
+			r = send_env(&e);
+		}
+	}
+
+	// If lease failed, then set eax to -1 to indicate failure
+	// And mark ENV_RUNNABLE
+	if (r < 0) {
+		cprintf("Lease to server failed! Aborting...\n");
+		sys_env_unsuspend(envid, ENV_RUNNABLE, -E_INVAL);
+		delete_lease(envid);
+	}
+	else {
+		// Do what?
+		sys_env_unsuspend(envid, ENV_LEASED, 0);
+	}
+
+}
+/*
+void
+try_send_ipc(uintptr_t va)
+{
+	int r, cretry = 0;
+	uintptr_t addr;
+	
+	while (cretry <= RETRIES) {
+		cretry++;
+
+		r = send_ipc_req(env->env_id, env);
+		if (r < 0) goto error;
+		
+		r = send_done_request(env->env_id);
+		if (r < 0) goto error;
+
+		break;
+	error:
+		send_abort_request(env->env_id);
+	}
+
+	if (cretry > RETRIES + 1) return -E_FAIL;
+
+	return 0;
+}
+*/
+void
+process_request()
+{
+	int icode, perm;
+	envid_t sender;
+
+	icode = ipc_recv(&sender, (void *) IPCRCV, &perm);
+	cprintf("Processing IPC %d request\n", icode);
+	switch(icode)
+	{
+	case CLIENT_LEASE_REQUEST:
+		try_send_lease(*((envid_t *) IPCRCV));
+		return;
+	case CLIENT_LEASE_COMPLETED:
+		return;
+	case CLIENT_SEND_IPC:
+//		try_send_ipc((uintptr_t) IPCRCV, perm);
+		return;
+		
+	default:
+		return;
+	}
+}
+
+void
+umain(int argc, char **argv)
+{
 
 	// Set page fault handler
 	set_pgfault_handler(pg_handler);
 
 	while (1) {
-		cprintf("Waiting for new lease requests...\n");
+		cprintf("Waiting for requests...\n");
 
-		// Wait for lease/migrate requests via IPC
-		sys_ipc_recv((void *) IPCRCV);
-
-		// Get envid from ipc *value*
-		envid = (envid_t) thisenv->env_ipc_value;
-		memmove((void *) &e, (void *) &envs[ENVX(envid)], 
-			sizeof(struct Env));
-
-		// Ids must match
-		if (e.env_id != envid) {
-			die("Env id mismatch!");
-		}
-
-		// Status must be ENV_SUSPENDED
-		if (e.env_status != ENV_SUSPENDED) {
-			cprintf("Failed to lease envid %x. Not leased!\n", 
-				envid);
-			r = -E_FAIL;
-		}
-		else {
-			// Set eax to 0, to appear migrate call succeed
-			e.env_tf.tf_regs.reg_eax = 0;
-			e.env_hostip = CLIENTIP; // Set my client ip
-			
-			// Put in lease_map
-			if ((r = put_lease(envid, SERVIP)) >= 0) {
-				// Try sending env
-				r = send_env(&e);
-			}
-		}
-
-		// If lease failed, then set eax to -1 to indicate failure
-		// And mark ENV_RUNNABLE
-		if (r < 0) {
-			cprintf("Lease to server failed! Aborting...\n");
-			sys_env_unsuspend(envid, ENV_RUNNABLE, -E_INVAL);
-			delete_lease(envid);
-		}
-		else {
-			sys_env_unsuspend(envid, ENV_LEASED, 0);
-			// Do what?
-		}
+		process_request();
 	}
 }

@@ -21,6 +21,7 @@
 #define CLIENTIP 0x7f000001 // 127.0.0.1
 #define CLIENTPORT 80
 #define IPCRCV (UTEMP + PGSIZE) // page to map ipc rcv
+#define IPCSND (UTEMP + PGSIZE) // page to map ipc rcv
 
 /* Protocol message types */
 #define PAGE_REQ 0
@@ -28,10 +29,18 @@
 #define DONE_LEASE 2
 #define ABORT_LEASE 3
 #define EXECUTED_LEASE 4
+#define START_IPC 5
+#define DONE_IPC DONE_LEASE
+
+#define CLIENT_LEASE_REQUEST 0
+#define CLIENT_LEASE_COMPLETED 1
+#define CLIENT_SEND_IPC 2
 
 /* Error codes (reuse E_NO_MEM) */
 #define E_BAD_REQ 200
 #define E_NO_LEASE 201
 #define E_FAIL 202
+
+
 
 #endif // JOS_USER_DJOS_H
