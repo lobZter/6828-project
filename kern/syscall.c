@@ -438,7 +438,7 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 				   sizeof(uint32_t))) = perm;
 
 		//can't write to page
-		r = sys_ipc_try_send(jdos_client, CLIENT_LEASE_REQUEST, 
+		r = sys_ipc_try_send(jdos_client, CLIENT_SEND_IPC, 
 				     (void *) IPCSND, PTE_U|PTE_P); 
 
 		sys_page_unmap(curenv->env_id, (void *) IPCSND);

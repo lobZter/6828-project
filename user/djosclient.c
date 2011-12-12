@@ -204,8 +204,6 @@ send_lease_req(envid_t envid, void *thisenv, struct Env *env)
 			e->env_id, e->env_parent_id,
 			e->env_status, e->env_hostip);
 	}
-
-	cprintf("Sending lease request for process %08x\n", envid);
 	
 	return send_buff(buffer, LEASE_REQ_SZ);
 }
@@ -341,6 +339,8 @@ try_send_lease(envid_t envid, void *thisenv)
 {
 	struct Env e;
 	int r;
+
+	cprintf("Sending lease request for process %08x\n", envid);
 
 	// Get envid from ipc *value*
 	memmove((void *) &e, (void *) &envs[ENVX(envid)], 
