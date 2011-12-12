@@ -18,15 +18,6 @@ umain(int argc, char **argv)
 		ipc_send(thisenv->env_parent_id, 0x200, NULL, 0x0);
 		cprintf("sending parent 200\n");
 		
-		id = fork();
-		if (!id) {
-			while (sys_migrate(&thisenv) != 0) {
-				cprintf("retrying to migrate %x\n", 
-					thisenv->env_id);
-			}
-			cprintf("hello world! i am a grand child environment"
-				" %08x\n", thisenv->env_id);
-		}
 	}
 	else {
 		cprintf("hello world! i am parent environment %08x\n", 
@@ -36,5 +27,16 @@ umain(int argc, char **argv)
 		
 		val = ipc_recv(NULL, NULL, NULL);
 		cprintf("child sent me %x\n", val);
+
+		id = fork();
+		if (!id) {
+			while (sys_migrate(&thisenv) != 0) {
+				cprintf("retrying to migrate %x\n", 
+					thisenv->env_id);
+			}
+			cprintf("hello world! i am a grand child environment"
+				" %08x\n", thisenv->env_id);	
+		}
+
 	}
 }
