@@ -61,6 +61,18 @@ delete_lease(envid_t envid)
 	return -1;
 }
 
+int
+find_lease(envid_t envid) 
+{
+	int i;
+	for (i = 0; i < CLEASES; i++) {
+		if (lease_map[i].env_id == envid) {
+			return i;
+		}
+	}
+	return -1;
+}
+
 // Super naive for now
 void
 check_lease_complete() 
@@ -372,56 +384,105 @@ try_send_lease(envid_t envid)
 	}
 
 }
+
 int
-send_ipc_req(envid_t src_id, envid_t dst_id, int32_t val)
+send_ipc_start(struct ipc_packet *packet)
 {
 	char buffer[sizeof(struct ipc_packet) + 1];
 	int r;
-	struct ipc_packet *packet;
 
 	// Clear buffer
 	memset(buffer, 0, sizeof(struct ipc_packet) + 1);
 	
 	*((char *) buffer) = START_IPC;
-	packet = (struct ipc_packet *) (buffer + 1);
-	packet->src_id = src_id;
-	packet->dst_id = dst_id;
-	packet->val = va;
+	memmove((void *) (buffer + 1), 
+		(void *) packet, sizeof(struct ipc_packet));
 
 	if (debug){
 		cprintf("Sending IPC Start: \n"
 			"  src_id: %x\n"
 			"  src_id: %x\n"
 			"  val: %d\n",
-			src_id, dst_id, val);
+			packet->pkt_src, packet->pkt_dst, packet->pkt_val);
 	}
 	
 	return send_buff(buffer, 1 + sizeof(struct ipc_packet));
 }
 
-void
-try_send_ipc(envid_t src_id, uintptr_t va, int perm)
+int
+send_ipc_req(struct ipc_packet *packet)// need to pass IP! , uint32_t ip)
 {
 	int r, cretry = 0;
 	
 	while (cretry <= RETRIES) {
 		cretry++;
 
-		r = send_ipc_req(src_id, *((envid_t *) va), 
-				 *((int32_t *) (va + sizeof(envid_t))));
+		r = send_ipc_start(packet);
 		if (r < 0) goto error;
 		
-		r = send_done_request(src_id, DONE_IPC);
+		r = send_done_request(packet->pkt_src, DONE_IPC);
 		if (r < 0) goto error;
 
 		break;
 	error:
-		send_abort_request(env->env_id);
+		send_abort_request(packet->pkt_src);
 	}
 
 	if (cretry > RETRIES + 1) return -E_FAIL;
 
 	return 0;
+}
+void
+try_send_ipc(envid_t src_id, uintptr_t va, int perm)
+{
+	struct Env e;
+	char buff[sizeof(struct ipc_packet)];
+	uint32_t ip;
+	int r;
+
+	struct ipc_packet *packet = (struct ipc_packet *) buff;
+	
+	packet->pkt_src = src_id;
+	packet->pkt_dst = *((envid_t *) va);
+	packet->pkt_val = *((int32_t *) (va + sizeof(envid_t)));
+	packet->pkt_va = NULL;
+	packet->pkt_perm = perm;
+
+	// Get envid from ipc *value*, check env exists
+	memmove((void *) &e, (void *) &envs[ENVX(packet->pkt_dst)], 
+		sizeof(struct Env));
+
+	// Ids must match
+	if (e.env_id != packet->pkt_dst) {
+		die("Env id mismatch!");
+	}
+
+	// Status must be ENV_LEASED
+	if (e.env_status != ENV_SUSPENDED) {
+		cprintf("Failed to lease envid %x. Not leased!\n", 
+			e.env_id);
+		r = -E_FAIL;
+	}
+	else {
+		// Put in lease_map
+		if ((r = find_lease(packet->pkt_dst) >= 0)) {
+			ip = lease_map[r].lessee_ip;
+			// Try sending env
+			r = send_ipc_req(packet);//, ip);
+		}
+	}
+
+	// If lease failed, then set eax to -1 to indicate failure
+	// And mark ENV_RUNNABLE
+	if (r < 0) {
+		cprintf("Lease to server failed! Aborting...\n");
+		sys_env_unsuspend(packet->pkt_src, ENV_RUNNABLE, -E_INVAL);
+	}
+	else {
+		// Do what?
+//		sys_env_unsuspend(src_id, ENV_LEASED, 0);
+	}
+
 }
 
 void
@@ -431,7 +492,7 @@ process_request()
 	envid_t sender;
 
 	icode = ipc_recv(&sender, (void *) IPCRCV, &perm);
-	cprintf("Processing IPC %d request\n", icode);
+	cprintf("Processing Client IPC %d request\n", icode);
 	switch(icode)
 	{
 	case CLIENT_LEASE_REQUEST:
