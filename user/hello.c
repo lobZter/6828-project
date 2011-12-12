@@ -4,9 +4,23 @@
 void
 umain(int argc, char **argv)
 {
-	cprintf("Now you don't see me...\n");
+	// 1
+/*	cprintf("Now you don't see me...\n");
 	sys_migrate(&thisenv);
 	cprintf("Now you do!\n");
+*/
+
+	// 2
+	int id;
+	cprintf("Watch closely...");
+	id = fork();
+	if (!id) {
+		sys_migrate(&thisenv);
+	}
+
+	cprintf("Time for the prestige!");
+
+        // 3
 /*	int id;
 	int val;
 
