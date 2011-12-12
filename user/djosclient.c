@@ -513,6 +513,7 @@ try_send_ipc(envid_t src_id, uintptr_t va, int perm)
 	packet.pkt_va = 0;
 	packet.pkt_perm = *((unsigned *) (va + sizeof(envid_t) + 
 					  sizeof(uint32_t)));
+	packet.pkt_fromalien = 0;
 
 	// Get envid from ipc *value*, check env exists
 	memmove((void *) &e, (void *) &envs[ENVX(packet.pkt_dst)], 
@@ -525,17 +526,24 @@ try_send_ipc(envid_t src_id, uintptr_t va, int perm)
 	}
 
 	// Status must be ENV_LEASED
-	if (e.env_status != ENV_LEASED) {
-		cprintf("Sending IPC via DJOS to unleased process!\n", 
+	if (e.env_status != ENV_LEASED && 
+	    !(e.env_alien && // alien check
+	      ((e.env_hosteid ^ packet.pkt_dst) < 0x000fffff))) {
+		cprintf("Sending IPC via DJOS to unleased process"
+			" or from non-alien!\n", 
 			e.env_id);
 		r = -E_BAD_ENV;
 	}
 	else {
 		// Put in lease_map
-		if ((r = find_lease(packet.pkt_dst) >= 0)) {
+		if ((r = find_lease(packet.pkt_dst) >= 0)) { // ENV_LEASED
 			ip = lease_map[r].lessee_ip;
 			// Try sending env
 			r = send_ipc_req(&packet, ip);
+		}
+		else if (e.env_alien) { // alien?
+			packet.pkt_fromalien = 1;
+			r = send_ipc_req(&packet, e.env_hostip);
 		}
 		else {
 			r = -E_BAD_ENV;

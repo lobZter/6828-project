@@ -401,7 +401,9 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 		return -E_IPC_NOT_RECV;
 	}
 
-	if (rcv->env_status == ENV_LEASED) {
+	if ((rcv->env_status == ENV_LEASED) || // is leased?
+	    (curenv->env_alien && // is lessee? (match mac addr bits)
+	     ((curenv->env_hosteid ^ envid) < 0x000fffff))) {
 		envid_t jdos_client = 0;
 		struct Env *e;
 		int i, r;
