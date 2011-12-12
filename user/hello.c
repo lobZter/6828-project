@@ -5,21 +5,21 @@ void
 umain(int argc, char **argv)
 {
 	// 1
-/*	cprintf("Now you don't see me...\n");
+	cprintf("===> Now you don't see me...\n");
 	sys_migrate(&thisenv);
-	cprintf("Now you do!\n");
-*/
+	cprintf("===> Now you do!\n");
+
 
 	// 2
-	int id;
-	cprintf("Watch closely...");
+/*	int id;
+	cprintf("===> Watch closely...\n");
 	id = fork();
 	if (!id) {
 		sys_migrate(&thisenv);
 	}
 
-	cprintf("Time for the prestige!");
-
+	cprintf("===> Time for the prestige!\n");
+*/
         // 3
 /*	int id;
 	int val;
@@ -27,28 +27,28 @@ umain(int argc, char **argv)
 	id = fork();
 	if (!id) {
 		sys_migrate(&thisenv);
-		cprintf("hello world! i am child environment %08x\n", 
+		cprintf("===> hello world! i am child environment %08x\n", 
 			thisenv->env_id);
 		val = ipc_recv(NULL, NULL, NULL);
-		cprintf("parent sent me %x\n", val);
+		cprintf("===> parent sent me %x\n", val);
 
 		ipc_send(thisenv->env_parent_id, 02200, NULL, 0x0);
-		cprintf("sending parent 200\n");
+		cprintf("===> sending parent 200\n");
 		
 		val = ipc_recv(NULL, NULL, NULL);
-                cprintf("parent sent me %x\n", val);
+                cprintf("===> parent sent me %x\n", val);
 	}
 	else {
-		cprintf("hello world! i am parent environment %08x\n", 
+		cprintf("===> hello world! i am parent environment %08x\n", 
 			thisenv->env_id);
 		ipc_send(id, 0x100, NULL, 0x0);
-		cprintf("send child 100\n");
+		cprintf("===> send child 100\n");
 		
 		val = ipc_recv(NULL, NULL, NULL);
-		cprintf("child sent me %x\n", val);
+		cprintf("===> child sent me %x\n", val);
 
 		ipc_send(id, 0x300, NULL, 0x0);
-		cprintf("send child 300\n");
+		cprintf("===> send child 300\n");
 	}
 */
 }
