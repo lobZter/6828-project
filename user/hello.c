@@ -6,6 +6,9 @@ umain(int argc, char **argv)
 	int id;
 	int val;
 
+	sys_yield();
+	sys_yield();
+
 	id = fork();
 	if (id == 0) {
 		sys_migrate(&thisenv);
