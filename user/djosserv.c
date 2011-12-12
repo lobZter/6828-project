@@ -61,6 +61,27 @@ destroy_lease(envid_t env_id)
 	destroy_lease_id(i);
 }
 
+int
+annihilate(envid_t envid) 
+{
+	int i;
+
+	i = find_lease(envid);
+	if (i < 0) {
+		return -E_BAD_REQ;
+	}
+
+	struct Env *e = (struct Env *) &envs[ENVX(envid)];
+
+	if (e->env_status == ENV_LEASED) {
+		i = sys_env_destroy(lease_map[i].dst);
+		if (i < 0) return -E_BAD_REQ;
+	}
+
+	destroy_lease_id(i);
+	return 0;
+}
+
 void 
 gc_lease_map(int ctime) {
 	int i;
@@ -298,6 +319,9 @@ process_abort_lease(char *buffer)
 	}
 
 	destroy_lease(src_id);
+	if ((i = find_lease(src_id)) >= 0) {
+		sys_env_destroy(lease_map[i].dst);
+	}
 
 	return 0;
 }
@@ -308,11 +332,13 @@ process_ipc_start(char *buffer)
 	envid_t dst;
 	int r;
 
-	struct ipc_pkt packet = *((struct ipc_pkt *) (buffer + 1));
-	if((r = find_lease(packet.pkt_dst)) < 0)
+	struct ipc_pkt packet = *((struct ipc_pkt *) buffer);
+
+	if ((r = find_lease(packet.pkt_dst)) < 0) {
 		return -E_FAIL;
+	}
+
 	dst = lease_map[r].dst;
-//	ipc_send(dst, packet.pkt_val, packet.pkt_va, packet.pkt_perm);
 
 	if (debug) {
 		cprintf("New IPC packet: \n"
@@ -322,7 +348,24 @@ process_ipc_start(char *buffer)
 			"  val: %d\n",
 			packet.pkt_src, packet.pkt_dst, dst, packet.pkt_val);
 	}
-	return 0;	
+	
+	if (!packet.pkt_va) {
+		packet.pkt_va = UTOP;
+	}
+
+	r = sys_ipc_try_send(dst, packet.pkt_val, (void *) packet.pkt_va, 
+			     packet.pkt_perm);
+
+	switch (r) {
+	case -E_IPC_NOT_RECV:
+		return -E_NO_IPC;
+	case -E_INVAL:
+		return -E_BAD_REQ;
+	default:
+		return -E_FAIL;
+	}
+
+	return r;
 }
 int
 process_completed_lease(char *buffer)
@@ -342,13 +385,7 @@ process_completed_lease(char *buffer)
 
 	cprintf("Process %08x completed!\n", envid);
 
-	e = (struct Env *) &envs[ENVX(envid)];
-	
-	if (e->env_status == ENV_LEASED) {
-		sys_env_destroy(envid);
-	}
-
-	return 0;
+	return annihilate(envid);
 }
 
 int
@@ -391,11 +428,6 @@ issue_reply(int sock, int status, envid_t env_id)
 	// For now only send status code back
 	if (debug) {
 		cprintf("Sending response: %d, %x\n", status, env_id);
-	}
-
-	// If failure occurred, unlease env_id
-	if (status == -E_FAIL) {
-		destroy_lease(env_id);
 	}
 
 	uint32_t len = sizeof(int) + sizeof(envid_t);

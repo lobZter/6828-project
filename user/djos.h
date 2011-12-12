@@ -37,13 +37,14 @@
 #define E_BAD_REQ 200
 #define E_NO_LEASE 201
 #define E_FAIL 202
+#define E_NO_IPC 203
 
 struct ipc_pkt {
 	envid_t pkt_dst;
 	envid_t pkt_src;
-	envid_t pkt_val;
+	uint32_t pkt_val;
 	uintptr_t pkt_va;
-	int pkt_perm;
+	unsigned pkt_perm;
 };
 
 #endif // JOS_USER_DJOS_H
