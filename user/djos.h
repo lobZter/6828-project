@@ -3,7 +3,6 @@
 
 #define debug 0
 
-
 #define SERVIP 0x12bb001f // Server ip
 #define SERVPORT 26591    // Server port  
 
@@ -41,7 +40,5 @@
 #define E_BAD_REQ 200
 #define E_NO_LEASE 201
 #define E_FAIL 202
-
-
 
 #endif // JOS_USER_DJOS_H
