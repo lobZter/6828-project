@@ -89,6 +89,7 @@ check_lease_complete()
 
 		e = (struct Env *) &envs[ENVX(lease_map[i].env_id)];
 		if (e->env_status != ENV_LEASED) {
+			cprintf("GCING lease %x\n", e->env_id);
 			lease_map[i].env_id = 0;
 			lease_map[i].lessee_ip = 0;
 		}
@@ -404,7 +405,7 @@ try_send_lease_completed(envid_t envid)
 		r = -E_FAIL;
 		goto end;
 	}
-
+	cprintf("Sending completed for %x %x\n", e.env_id, e.env_hosteid);
 	while (ctries <= RETRIES) {
 		buffer[0] = COMPLETED_LEASE;
 		*((envid_t *) (buffer + 1)) = e.env_hosteid;
