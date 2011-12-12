@@ -355,7 +355,7 @@ try_send_lease(envid_t envid, void *thisenv)
 
 	// Ids must match
 	if (e.env_id != envid) {
-		cprintf("Env id mismatch! %x, %x", e.env_id, envid);
+		cprintf("Env id mismatch! %x, %x\n", e.env_id, envid);
 		return;
 	}
 
