@@ -19,7 +19,7 @@
 #define RETRIES 5       // # of retries
 #define CLEASES 5       // # of client leases
 #define CLIENTIP 0x7f000001 // 127.0.0.1
-#define CLIENTPORT 8
+#define CLIENTPORT 80
 #define IPCRCV (UTEMP + PGSIZE) // page to map ipc rcv
 
 /* Protocol message types */
