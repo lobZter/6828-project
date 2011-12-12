@@ -283,58 +283,81 @@ send_env(struct Env *env)
 }
 
 void
-umain(int argc, char **argv)
+try_send_lease(envid_t envid)
 {
 	struct Env e;
-	envid_t envid;
 	int r;
+
+	// Get envid from ipc *value*
+	memmove((void *) &e, (void *) &envs[ENVX(envid)], 
+		sizeof(struct Env));
+
+	// Ids must match
+	if (e.env_id != envid) {
+		die("Env id mismatch!");
+	}
+
+	// Status must be ENV_LEASED
+	if (e.env_status != ENV_LEASED) {
+		cprintf("Failed to lease envid %x. Not leased!\n", 
+			envid);
+		r = -E_FAIL;
+	}
+	else {
+		// Set eax to 0, to appear migrate call succeed
+		e.env_tf.tf_regs.reg_eax = 0;
+		e.env_hostip = CLIENTIP; // Set my client ip
+			
+		// Put in lease_map
+		if ((r = put_lease(envid, SERVIP)) >= 0) {
+			// Try sending env
+			r = send_env(&e);
+		}
+	}
+
+	// If lease failed, then set eax to -1 to indicate failure
+	// And mark ENV_RUNNABLE
+	if (r < 0) {
+		cprintf("Lease to server failed! Aborting...\n");
+		sys_env_mark_runnable(envid);
+		delete_lease(envid);
+	}
+	else {
+		// Do what?
+	}
+
+}
+void
+recv_ipc()
+{
+	int icode;
+	envid_t sender;
+
+	icode = ipc_recv(&sender, (void *) IPCRCV, NULL);
+	cprintf("Processing IPC %d request\n", icode);
+	switch(icode)
+	{
+	case IPC_LEASE_REQUEST:
+		try_send_lease(*((envid_t *) IPCRCV));
+		return;
+	case IPC_LEASE_COMPLETED:
+		return;
+	default:
+		return;
+	}
+}
+
+void
+umain(int argc, char **argv)
+{
 
 	// Set page fault handler
 	set_pgfault_handler(pg_handler);
 
 	while (1) {
-		cprintf("Waiting for new lease requests...\n");
+		cprintf("Waiting for requests...\n");
 
+		recv_ipc();
 		// Wait for lease/migrate requests via IPC
-		sys_ipc_recv((void *) IPCRCV);
-
-		// Get envid from ipc *value*
-		envid = (envid_t) thisenv->env_ipc_value;
-		memmove((void *) &e, (void *) &envs[ENVX(envid)], 
-			sizeof(struct Env));
-
-		// Ids must match
-		if (e.env_id != envid) {
-			die("Env id mismatch!");
-		}
-
-		// Status must be ENV_LEASED
-		if (e.env_status != ENV_LEASED) {
-			cprintf("Failed to lease envid %x. Not leased!\n", 
-				envid);
-			r = -E_FAIL;
-		}
-		else {
-			// Set eax to 0, to appear migrate call succeed
-			e.env_tf.tf_regs.reg_eax = 0;
-			e.env_hostip = CLIENTIP; // Set my client ip
-			
-			// Put in lease_map
-			if ((r = put_lease(envid, SERVIP)) >= 0) {
-				// Try sending env
-				r = send_env(&e);
-			}
-		}
-
-		// If lease failed, then set eax to -1 to indicate failure
-		// And mark ENV_RUNNABLE
-		if (r < 0) {
-			cprintf("Lease to server failed! Aborting...\n");
-			sys_env_mark_runnable(envid);
-			delete_lease(envid);
-		}
-		else {
-			// Do what?
-		}
 	}
 }
