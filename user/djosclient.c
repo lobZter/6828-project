@@ -470,7 +470,7 @@ send_ipc_req(struct ipc_pkt *packet, uint32_t ip)
 		cretry++;
 
 		r = send_ipc_start(packet);
-		cprintf("server send ipc reply as %d\n", r);
+
 		switch (r) {
 		case -E_NO_IPC:
 			return -E_IPC_NOT_RECV;
@@ -478,6 +478,8 @@ send_ipc_req(struct ipc_pkt *packet, uint32_t ip)
 			return -E_INVAL;
 		case -E_FAIL:
 			return -E_BAD_ENV;
+		case 0:
+			return 0;
 		default:
 			continue;
 		}
