@@ -56,8 +56,11 @@ sys_env_destroy(envid_t envid)
 {
 	int r;
 	struct Env *e;
+	bool check = 1;
 
-	if ((r = envid2env(envid, &e, 1)) < 0)
+	if (curenv->env_type == ENV_TYPE_JDOSC) check = 0;
+
+	if ((r = envid2env(envid, &e, check)) < 0)
 		return r;
 	env_destroy(e);
 	return 0;
@@ -590,6 +593,8 @@ sys_env_lease(struct Env *src, envid_t *dst_id)
 	e->env_hostip = src->env_hostip;
 	e->env_alien = 1; // Mark as alien
 
+	e->env_hosteid = src->env_hosteid;
+
 	*dst_id = e->env_id;
 
 	return 0;
@@ -656,7 +661,7 @@ sys_env_unsuspend(envid_t envid, uint32_t status, uint32_t value)
 }
 
 int // user call to lease self
-sys_migrate()
+sys_migrate(void *thisenv)
 {
 	envid_t jdos_client = 0;
 	struct Env *e;
@@ -678,6 +683,7 @@ sys_migrate()
 	curenv->env_status = ENV_SUSPENDED; 
 	sys_page_alloc(curenv->env_id, (void *) IPCSND, PTE_U|PTE_P|PTE_W);
 	*((envid_t *) IPCSND) = curenv->env_id;
+	*((void **)(IPCSND + sizeof(envid_t))) = thisenv;
 
 	//can't write to page
 	r = sys_ipc_try_send(jdos_client, CLIENT_LEASE_REQUEST, 
@@ -693,6 +699,64 @@ sys_migrate()
 	}
 
 	// Migrated! BOOM!
+	return 0;
+}
+
+int
+sys_lease_complete() 
+{
+	envid_t jdos_client = 0;
+	struct Env *e;
+	int i, r;
+
+	for (i = 0; i < NENV; i++) {
+		if (envs[i].env_type == ENV_TYPE_JDOSC) {
+			jdos_client = envs[i].env_id;
+			break;
+		}
+	}
+
+	// jdos client running?
+	if (!jdos_client) return -E_BAD_ENV; 
+
+	if ((r = envid2env(jdos_client, &e, 0)) < 0) return r;
+
+	// Mark suspended and send lease complete request
+	curenv->env_status = ENV_SUSPENDED; 
+	sys_page_alloc(curenv->env_id, (void *) IPCSND, PTE_U|PTE_P|PTE_W);
+	*((envid_t *) IPCSND) = curenv->env_id;
+
+	// Can't write to page
+	r = sys_ipc_try_send(jdos_client, CLIENT_LEASE_COMPLETED, 
+			     (void *) IPCSND, PTE_U|PTE_P); 
+
+	sys_page_unmap(curenv->env_id, (void *) IPCSND);
+
+	// Failed to migrate, back to running!
+	if (r < 0) {
+		cprintf("sys_lease_completed: failed to send ipc %d\n", r);
+		curenv->env_status = ENV_RUNNABLE;
+		return r;
+	}
+
+	return 0;	
+}
+
+int
+sys_env_set_thisenv(envid_t envid, void *thisenv)
+{
+	void *pgva = (void *) ROUNDDOWN(thisenv, PGSIZE);
+
+	if (sys_page_map(envid, pgva, curenv->env_id, (void *) UTEMP, 
+			 PTE_P|PTE_U|PTE_W) < 0) 
+		return -E_INVAL;
+
+	*((struct Env **)(UTEMP + PGOFF(thisenv))) = 
+		&((struct Env *)UENVS)[ENVX(envid)];
+
+	if (sys_page_unmap(curenv->env_id, (void *) UTEMP) < 0)
+		return -E_INVAL;
+
 	return 0;
 }
 
@@ -756,8 +820,12 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		return sys_get_perms((envid_t) a1, (void *) a2, (int *) a3);
 	case SYS_env_unsuspend:
 		return sys_env_unsuspend((envid_t) a1, (uint32_t) a2, (uint32_t) a3);
+	case SYS_env_set_thisenv:
+		return sys_env_set_thisenv((envid_t) a1, (void *) a2);
 	case SYS_migrate:
-		return sys_migrate();
+		return sys_migrate((void *) a1);
+	case SYS_lease_complete:
+		return sys_lease_complete();
 	default:
 		return -E_INVAL;
 	}

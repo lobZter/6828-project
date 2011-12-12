@@ -89,6 +89,7 @@ check_lease_complete()
 
 		e = (struct Env *) &envs[ENVX(lease_map[i].env_id)];
 		if (e->env_status != ENV_LEASED) {
+			cprintf("GCING lease %x\n", e->env_id);
 			lease_map[i].env_id = 0;
 			lease_map[i].lessee_ip = 0;
 		}
@@ -188,7 +189,7 @@ send_buff(const void *req, int len)
 }
 
 int
-send_lease_req(envid_t envid, struct Env *env)
+send_lease_req(envid_t envid, void *thisenv, struct Env *env)
 {
 	char buffer[BUFFSIZE];
 	int r;
@@ -202,6 +203,8 @@ send_lease_req(envid_t envid, struct Env *env)
 	e = (struct Env *) (buffer + sizeof(envid_t) + 1);
 
 	memmove(e, (void *) env, sizeof(struct Env));
+	*((void **)(buffer + 1 + sizeof(struct Env) + sizeof(envid_t)))
+		= thisenv;
 
 	if (debug){
 		cprintf("Sending struct Env: \n"
@@ -213,7 +216,8 @@ send_lease_req(envid_t envid, struct Env *env)
 			e->env_status, e->env_hostip);
 	}
 	
-	return send_buff(buffer, 1 + sizeof(struct Env) + sizeof(envid_t));
+	return send_buff(buffer, 1 + sizeof(struct Env) + 
+			 sizeof(envid_t) + sizeof(void **));
 }
 
 int
@@ -310,7 +314,7 @@ send_abort_request(envid_t envid)
 }
 
 int
-send_env(struct Env *env)
+send_env(struct Env *env, void *thisenv)
 {
 	int r, cretry = 0;
 	uintptr_t addr;
@@ -318,7 +322,7 @@ send_env(struct Env *env)
 	while (cretry <= RETRIES) {
 		cretry++;
 
-		r = send_lease_req(env->env_id, env);
+		r = send_lease_req(env->env_id, thisenv, env);
 		if (r < 0) goto error;
 		
 		r = send_pages(env->env_id);
@@ -339,7 +343,7 @@ send_env(struct Env *env)
 }
 
 void
-try_send_lease(envid_t envid)
+try_send_lease(envid_t envid, void *thisenv)
 {
 	struct Env e;
 	int r;
@@ -350,12 +354,13 @@ try_send_lease(envid_t envid)
 
 	// Ids must match
 	if (e.env_id != envid) {
-		die("Env id mismatch!");
+		cprintf("Env id mismatch!");
+		return;
 	}
 
 	// Status must be ENV_LEASED
 	if (e.env_status != ENV_SUSPENDED) {
-		cprintf("Failed to lease envid %x. Not leased!\n", 
+		cprintf("Failed to lease envid %x. Not suspended!\n", 
 			envid);
 		r = -E_FAIL;
 	}
@@ -363,11 +368,12 @@ try_send_lease(envid_t envid)
 		// Set eax to 0, to appear migrate call succeed
 		e.env_tf.tf_regs.reg_eax = 0;
 		e.env_hostip = CLIENTIP; // Set my client ip
+		e.env_hostport = 0x7;
 			
 		// Put in lease_map
 		if ((r = put_lease(envid, SERVIP)) >= 0) {
 			// Try sending env
-			r = send_env(&e);
+			r = send_env(&e, thisenv);
 		}
 	}
 
@@ -385,6 +391,7 @@ try_send_lease(envid_t envid)
 
 }
 
+<<<<<<< HEAD
 int
 send_ipc_start(struct ipc_packet *packet)
 {
@@ -407,6 +414,54 @@ send_ipc_start(struct ipc_packet *packet)
 	}
 	
 	return send_buff(buffer, 1 + sizeof(struct ipc_packet));
+}
+
+void
+try_send_lease_completed(envid_t envid)
+{
+	struct Env e;
+	int r, i, ctries = 0;
+	char buffer[BUFFSIZE];
+	
+	memmove((void *) &e, (void *) &envs[ENVX(envid)], 
+		sizeof(struct Env));
+
+	// Ids must match
+	if (e.env_id != envid) {
+		cprintf("Env id mismatch!");
+		return; // That env doesn't exist
+	}
+
+	// Status must be ENV_LEASED
+	if (e.env_status != ENV_SUSPENDED) {
+		cprintf("Failed to lease complete envid %x. Not suspended!\n", 
+			envid);
+		r = -E_FAIL;
+		goto end;
+	}
+
+	while (ctries <= RETRIES) {
+		buffer[0] = COMPLETED_LEASE;
+		*((envid_t *) (buffer + 1)) = e.env_hosteid;
+		r = send_buff(buffer, 1 + sizeof(envid_t));
+		if (!r) break;
+		ctries++;
+	}
+
+	if (ctries > RETRIES) {
+		r = -E_FAIL;
+		goto end;
+	}
+
+end:
+	if (r < 0) {
+		cprintf("Complete lease to server failed! Aborting...\n");
+		sys_env_unsuspend(envid, ENV_RUNNABLE, -E_INVAL);
+	}
+	else {
+		// Do what?
+		sys_env_unsuspend(envid, ENV_RUNNABLE, 0);
+	}
 }
 
 int
@@ -496,9 +551,11 @@ process_request()
 	switch(icode)
 	{
 	case CLIENT_LEASE_REQUEST:
-		try_send_lease(*((envid_t *) IPCRCV));
+		try_send_lease(*((envid_t *) IPCRCV), 
+			       *((void **) (IPCRCV + sizeof(envid_t))));
 		return;
 	case CLIENT_LEASE_COMPLETED:
+		try_send_lease_completed(*((envid_t *) IPCRCV));
 		return;
 	case CLIENT_SEND_IPC:
 		try_send_ipc(sender, (uintptr_t) IPCRCV, perm);

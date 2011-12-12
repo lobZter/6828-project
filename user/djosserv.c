@@ -13,6 +13,7 @@ struct lease_entry {
 	envid_t dst;
 	char status;
 	int stime;
+	void *thisenv;
 };
 
 struct lease_entry lease_map[SLEASES];
@@ -121,6 +122,7 @@ process_start_lease(char *buffer)
 	int i, entry;
 	struct Env req_env;
 	envid_t src_id, dst_id;
+	void *tenv;
 
 	// Check if an entry is available in lease map
 	entry = -1;
@@ -142,6 +144,10 @@ process_start_lease(char *buffer)
 
 	// Read struct Env from request
 	req_env = *((struct Env *) buffer);
+	buffer += sizeof(struct Env);
+
+	// Read thisenv
+	tenv = *((void **) buffer);
 
 	if (debug) {
 		cprintf("New lease request: \n"
@@ -159,6 +165,7 @@ process_start_lease(char *buffer)
 	// Set parent_id of env to self (doesn't have notion of parent_id
 	// anymore
 	req_env.env_parent_id = thisenv->env_id;	
+	req_env.env_hosteid = src_id;
 
 	// If there is any free env, copy over request env.
 	if (sys_env_lease(&req_env, &dst_id)) {
@@ -170,6 +177,7 @@ process_start_lease(char *buffer)
 	lease_map[i].dst = dst_id;
 	lease_map[i].status = LE_BUSY;
 	lease_map[i].stime = sys_time_msec();
+	lease_map[i].thisenv = tenv;
 
 	if (debug) {
 		cprintf("New lease mapped: %x->%x\n",
@@ -262,6 +270,9 @@ process_done_lease(char *buffer)
 	if (!lease_map[i].dst) return -E_FAIL;
 	lease_map[i].status = LE_DONE;
 
+	// Fix thisenv
+	sys_env_set_thisenv(lease_map[i].dst, lease_map[i].thisenv);
+
 	// Change status to ENV_RUNNABLE
 	// We have transfered all required state so can start executing
 	// leased env now.
@@ -313,6 +324,26 @@ process_ipc_start(char *buffer)
 	
 }
 int
+process_completed_lease(char *buffer)
+{
+	int i;
+	envid_t src_id;
+
+	// Destory env
+	src_id = *((envid_t *) buffer);
+
+	if (debug) {
+		cprintf("New lease completed request: \n"
+			"  env_id: %x\n",
+			src_id);
+	}
+
+	sys_env_destroy(src_id);
+
+	return 0;
+}
+
+int
 process_request(char *buffer)
 {
 	char req_type;
@@ -337,6 +368,9 @@ process_request(char *buffer)
 		return process_abort_lease(buffer);
 	case IPC_START:
 		return process_ipc_start(buffer);
+	case COMPLETED_LEASE:
+		cprintf("process completed\n");
+		return process_completed_lease(buffer);
 	default:
 		return -E_BAD_REQ;
 	}

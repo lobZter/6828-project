@@ -28,6 +28,8 @@ enum {
 	SYS_get_perms,
 	SYS_env_unsuspend,
 	SYS_migrate,
+	SYS_lease_complete,
+	SYS_env_set_thisenv,
 	NSYSCALLS
 };
 
