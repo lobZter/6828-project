@@ -19,6 +19,6 @@ umain(int argc, char **argv)
 		cprintf("hello world! i am parent environment %08x\n", 
 			thisenv->env_id);
 		ipc_send(id, 0x100, NULL, 0x0);
-		cprint("send child 0x100\n");
+		cprintf("send child 0x100\n");
 	}
 }
