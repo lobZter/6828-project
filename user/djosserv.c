@@ -348,7 +348,7 @@ process_ipc_start(char *buffer)
 		return -E_NO_IPC;
 	case -E_INVAL:
 		return -E_BAD_REQ;
-	default:
+	case -E_BAD_ENV:
 		return -E_FAIL;
 	}
 

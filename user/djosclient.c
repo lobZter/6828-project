@@ -523,7 +523,7 @@ try_send_ipc(envid_t src_id, uintptr_t va, int perm)
 	}
 
 	// Status must be ENV_LEASED
-	if (e.env_status != ENV_SUSPENDED) {
+	if (e.env_status != ENV_LEASED) {
 		cprintf("Sending IPC via DJOS to unleased process!\n", 
 			e.env_id);
 		r = -E_BAD_ENV;
