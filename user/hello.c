@@ -20,6 +20,15 @@ umain(int argc, char **argv)
 		
 		val = ipc_recv(NULL, NULL, NULL);
                 cprintf("parent sent me %x\n", val);
+
+		id = fork();
+		if (!id) {
+			while (sys_migrate(&thisenv) != 0) {
+				cprintf("retrying migrate...\n");
+			}
+
+			cprintf("hello world! i am grand child!");
+		}
 	}
 	else {
 		cprintf("hello world! i am parent environment %08x\n", 
