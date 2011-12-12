@@ -144,8 +144,8 @@ process_start_lease(char *buffer)
 			req_env.env_status, req_env.env_hostip);
 	}
 
-	// Env must have status = ENV_LEASED
-	if (req_env.env_status != ENV_LEASED) return -E_BAD_REQ;
+	// Env must have status = ENV_SUSPENDED
+	if (req_env.env_status != ENV_SUSPENDED) return -E_BAD_REQ;
 
 	// Set parent_id of env to self (doesn't have notion of parent_id
 	// anymore
