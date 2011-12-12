@@ -8,6 +8,8 @@
 #define LE_BUSY 1
 #define LE_DONE 2
 
+#define PTE_COW 0x800
+
 struct lease_entry {
 	envid_t src;
 	envid_t dst;
@@ -209,6 +211,12 @@ process_page_req(char *buffer)
 	// Read perms
 	perm = *((uint32_t *) buffer);
 	buffer += sizeof(uint32_t);
+
+	// If COW, make W
+	if (perm & PTE_COW) {
+		perm &= ~PTE_COW;
+		perm |= PTE_W;
+	}
 
 	// Read *chunk/split* id, 0 <= i <= 3 (four 1024 byte chunks)
 	i = *buffer;
