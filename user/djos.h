@@ -3,7 +3,7 @@
 
 #define debug 0
 
-#define SERVIP 0x12bb0020 // Server ip
+#define SERVIP 0x12bb0016 // Server ip
 #define SERVPORT 25281    // Server port  
 
 /* Common params */

@@ -85,7 +85,7 @@ connect_serv(uint32_t ip, uint32_t port)
 
         if ((r = connect(clientsock, (struct sockaddr *) &client,
                          sizeof(client))) < 0) {              
-                cprintf("Connection to server failed!");
+                cprintf("Connection to server failed!\n");
 		return -E_FAIL;
 	}
 
