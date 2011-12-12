@@ -589,7 +589,9 @@ process_request()
 	int icode, perm;
 	envid_t sender;
 
+	cprintf("calling recv\n");
 	icode = ipc_recv(&sender, (void *) IPCRCV, &perm);
+	cprintf("done recv\n");
 
 	switch(icode)
 	{
