@@ -738,7 +738,6 @@ sys_migrate(void *thisenv)
 
 	// Failed to migrate, back to running!
 	if (r < 0) {
-		cprintf("sys_migrate: failed to send ipc %d\n", r);
 		curenv->env_status = ENV_RUNNABLE;
 		return r;
 	}
