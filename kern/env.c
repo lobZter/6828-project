@@ -100,6 +100,11 @@ envid2env(envid_t envid, struct Env **env_store, bool checkperm)
 		return -E_BAD_ENV;
 	}
 
+	if (curenv->env_type == ENV_TYPE_JDOSC ||
+	    curenv->env_type == ENV_TYPE_JDOSS) {
+		goto bypass;
+	}
+
 	// Check that the calling environment has legitimate permission
 	// to manipulate the specified environment.
 	// If checkperm is set, the specified environment
@@ -109,6 +114,8 @@ envid2env(envid_t envid, struct Env **env_store, bool checkperm)
 		*env_store = 0;
 		return -E_BAD_ENV;
 	}
+
+bypass:
 
 	*env_store = e;
 	return 0;

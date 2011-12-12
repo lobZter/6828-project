@@ -56,12 +56,8 @@ sys_env_destroy(envid_t envid)
 {
 	int r;
 	struct Env *e;
-	bool check = 1;
 
-	if (curenv->env_type == ENV_TYPE_JDOSC ||
-		curenv->env_type == ENV_TYPE_JDOSS) check = 0;
-
-	if ((r = envid2env(envid, &e, check)) < 0)
+	if ((r = envid2env(envid, &e, 1)) < 0)
 		return r;
 	env_destroy(e);
 	return 0;
@@ -281,13 +277,9 @@ sys_page_map(envid_t srcenvid, void *srcva,
 	struct Env *dstenv;
 	pte_t *pte;
 	struct Page *pp;
-	bool check = 1;
-
-	if (curenv->env_type == ENV_TYPE_JDOSC ||
-		curenv->env_type == ENV_TYPE_JDOSS) check = 0;
 
 	// Env Ids valid and caller has perms to access them
-	if (envid2env(srcenvid, &srcenv, check) < 0 || 
+	if (envid2env(srcenvid, &srcenv, 1) < 0 || 
 		envid2env(dstenvid, &dstenv, check) < 0) {
 		return -E_BAD_ENV;
 	}
