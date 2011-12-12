@@ -86,6 +86,7 @@ connect_serv(uint32_t ip, uint32_t port)
         if ((r = connect(clientsock, (struct sockaddr *) &client,
                          sizeof(client))) < 0) {              
                 cprintf("Connection to server failed!\n");
+		close(clientsock);
 		return -E_FAIL;
 	}
 
@@ -140,6 +141,7 @@ send_buff(const void *req, int len)
 				return -E_FAIL;
 			}
 
+			close(sock);
 			sock = connect_serv(SERVIP, SERVPORT);
 			if (sock < 0) return -E_FAIL;
 			issue_request(sock, req, len);
@@ -287,8 +289,9 @@ send_env(struct Env *env)
 		send_abort_request(env->env_id);
 	}
 
-	if (cretry > RETRIES + 1) return -E_FAIL;
-
+	if (cretry > RETRIES) {
+		return -E_FAIL;
+	}
 	return 0;
 }
 
