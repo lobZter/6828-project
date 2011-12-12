@@ -653,7 +653,7 @@ sys_get_perms(envid_t envid, void *va, int *perm)
 }
 
 int // client call on lease failure
-sys_env_mark_runnable(envid_t envid)
+sys_env_unsuspend(envid_t envid, uint32_t status, uint32_t value)
 {
 	struct Env *e;
 	int r;
@@ -662,8 +662,8 @@ sys_env_mark_runnable(envid_t envid)
 		return r;   
 	}
 
-	e->env_tf.tf_regs.reg_eax = -E_INVAL;
-	e->env_status = ENV_RUNNABLE;
+	e->env_tf.tf_regs.reg_eax = value;
+	e->env_status = status;
 
 	return 0;
 }
@@ -688,12 +688,16 @@ sys_migrate()
 	if ((r = envid2env(jdos_client, &e, 0)) < 0) return r;
 
 	// Mark leased and try to migrate
-	curenv->env_status = ENV_LEASED;
+	curenv->env_status = ENV_SUSPENDED; 
 	sys_page_alloc(curenv->env_id, (void *) IPCSND, PTE_U|PTE_P|PTE_W);
 	*((envid_t *) IPCSND) = curenv->env_id;
-	r = sys_ipc_try_send(jdos_client, IPC_LEASE_REQUEST, 
-			     (void *) IPCSND, PTE_U|PTE_P); //can't write to page
+
+	//can't write to page
+	r = sys_ipc_try_send(jdos_client, CLIENT_LEASE_REQUEST, 
+			     (void *) IPCSND, PTE_U|PTE_P); 
+
 	sys_page_unmap(curenv->env_id, (void *) IPCSND);
+
 	// Failed to migrate, back to running!
 	if (r < 0) {
 		cprintf("sys_migrate: failed to send ipc %d\n", r);
@@ -765,8 +769,8 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		return sys_env_is_leased((envid_t) a1);
 	case SYS_get_perms:
 		return sys_get_perms((envid_t) a1, (void *) a2, (int *) a3);
-	case SYS_env_mark_runnable:
-		return sys_env_mark_runnable((envid_t) a1);
+	case SYS_env_unsuspend:
+		return sys_env_unsuspend((envid_t) a1, (uint32_t) a2, (uint32_t) a3);
 	case SYS_migrate:
 		return sys_migrate();
 	default:

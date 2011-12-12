@@ -302,7 +302,7 @@ try_send_lease(envid_t envid)
 	}
 
 	// Status must be ENV_LEASED
-	if (e.env_status != ENV_LEASED) {
+	if (e.env_status != ENV_SUSPENDED) {
 		cprintf("Failed to lease envid %x. Not leased!\n", 
 			envid);
 		r = -E_FAIL;
@@ -323,14 +323,16 @@ try_send_lease(envid_t envid)
 	// And mark ENV_RUNNABLE
 	if (r < 0) {
 		cprintf("Lease to server failed! Aborting...\n");
-		sys_env_mark_runnable(envid);
+		sys_env_unsuspend(envid, ENV_RUNNABLE, -E_INVAL);
 		delete_lease(envid);
 	}
 	else {
 		// Do what?
+		sys_env_unsuspend(envid, ENV_LEASED, 0);
 	}
 
 }
+/*
 void
 try_send_ipc(uintptr_t va)
 {
@@ -343,9 +345,6 @@ try_send_ipc(uintptr_t va)
 		r = send_ipc_req(env->env_id, env);
 		if (r < 0) goto error;
 		
-		r = send_page_req(env->env_id, va, perm);
-		if (r < 0) goto error;
-
 		r = send_done_request(env->env_id);
 		if (r < 0) goto error;
 
@@ -358,8 +357,9 @@ try_send_ipc(uintptr_t va)
 
 	return 0;
 }
+*/
 void
-recv_ipc()
+process_request()
 {
 	int icode, perm;
 	envid_t sender;
@@ -374,7 +374,7 @@ recv_ipc()
 	case CLIENT_LEASE_COMPLETED:
 		return;
 	case CLIENT_SEND_IPC:
-		try_send_ipc((uintptr_t) IPCRCV, perm);
+//		try_send_ipc((uintptr_t) IPCRCV, perm);
 		return;
 		
 	default:
@@ -392,7 +392,6 @@ umain(int argc, char **argv)
 	while (1) {
 		cprintf("Waiting for requests...\n");
 
-		recv_ipc();
-		// Wait for lease/migrate requests via IPC
+		process_request();
 	}
 }

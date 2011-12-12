@@ -3,7 +3,7 @@
 
 #define debug 0
 
-#define SERVIP 0x12bb001f // Server ip
+#define SERVIP 0x12bb001f // linverva 0x12b500e8// Server ip
 #define SERVPORT 26591    // Server port  
 
 /* Common params */
@@ -30,10 +30,11 @@
 #define ABORT_LEASE 3
 #define EXECUTED_LEASE 4
 #define START_IPC 5
-#define END_IPC 6
+#define DONE_IPC DONE_LEASE
 
-#define IPC_LEASE_REQUEST 0
-#define IPC_LEASE_COMPLETED 1
+#define CLIENT_LEASE_REQUEST 0
+#define CLIENT_LEASE_COMPLETED 1
+#define CLIENT_SEND_IPC 2
 
 /* Error codes (reuse E_NO_MEM) */
 #define E_BAD_REQ 200
