@@ -458,7 +458,7 @@ process_request()
 	envid_t sender;
 
 	icode = ipc_recv(&sender, (void *) IPCRCV, &perm);
-	cprintf("Processing IPC %d request\n", icode);
+
 	switch(icode)
 	{
 	case CLIENT_LEASE_REQUEST:

@@ -179,10 +179,10 @@ process_start_lease(char *buffer)
 	lease_map[i].stime = sys_time_msec();
 	lease_map[i].thisenv = tenv;
 
-//	if (debug) {
+	if (debug) {
 		cprintf("New lease mapped: %x->%x\n",
 			lease_map[i].src, lease_map[i].dst);
-//	}
+	}
 
 	return 0;
 }
@@ -313,11 +313,11 @@ process_completed_lease(char *buffer)
 	// Destory env
 	src_id = *((envid_t *) buffer);
 
-//	if (debug) {
+	if (debug) {
 		cprintf("New lease completed request: \n"
 			"  env_id: %x\n",
 			src_id);
-//	}
+	}
 
 	sys_env_destroy(src_id);
 
