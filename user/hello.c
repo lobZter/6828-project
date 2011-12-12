@@ -11,7 +11,7 @@ umain(int argc, char **argv)
 		sys_migrate(&thisenv);
 		cprintf("hello world! i am child environment %08x\n", 
 			thisenv->env_id);
-/*		
+		
 		id = fork();
 		if (!id) {
 			while (sys_migrate(&thisenv) != 0) {
@@ -21,20 +21,21 @@ umain(int argc, char **argv)
 				"%08x\n", 
 				thisenv->env_id);
 		}
-*/
+
 	}
 	else {
 		cprintf("hello world! i am parent environment %08x\n", 
 			thisenv->env_id);
 
-		id = fork();
+/*		id = fork();
 		if (!id) {
 			while (sys_migrate(&thisenv) != 0) {
 				cprintf("retrying...\n");
 			}
-			cprintf("hello world! i am grand child environment "
+			cprintf("hello world! i am second child environment "
 				"%08x\n", 
 				thisenv->env_id);
 		}
+*/
 	}
 }
