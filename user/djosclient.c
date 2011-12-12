@@ -144,7 +144,8 @@ issue_request(int sock, const void *req, int len)
 	}
 
 	if (write(sock, req, len) != len) {
-		cprintf("Failed to send request to server!\n");
+		if (debug)
+			cprintf("Failed to send request to server!\n");
 		return -1;
 	}
 

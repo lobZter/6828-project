@@ -433,7 +433,8 @@ issue_reply(int sock, int status, envid_t env_id)
 	*(envid_t *) (buf + sizeof(int)) = env_id;
 
 	if (write(sock, buf, len) != len) {
-		cprintf("Failed to send response to client!");
+		if (debug)
+			cprintf("Failed to send response to client!\n");
 		return -1;
 	}
 
@@ -454,7 +455,7 @@ handle_client(int sock)
 	{
 		// Receive message
 		if ((received = read(sock, buffer, BUFFSIZE)) < 0)
-			die("Failed to receive initial bytes from client");
+			die("Failed to receive initial bytes from client\n");
 
 		// Parse and process request
 		r = process_request(buffer);
