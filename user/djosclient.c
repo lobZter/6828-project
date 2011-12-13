@@ -10,7 +10,7 @@
 #define LEASE_COMP_SZ (1 + sizeof(envid_t)) 
 #define IPC_START_SZ (1 + sizeof(struct ipc_pkt))
 
-int clientsock;
+//int clientsock;
 
 struct lease_entry {
 	envid_t env_id;
@@ -108,12 +108,12 @@ int
 connect_serv(uint32_t ip, uint32_t port)
 {
         int r;
-//        int clientsock;
+        int clientsock;
 	struct sockaddr_in client;
 
-/*        if ((clientsock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
+        if ((clientsock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
                 die("Doomed!");
-*/
+
 	/* In this context client is actually DJOS server */
 
         memset(&client, 0, sizeof(client));             // Clear struct
@@ -594,10 +594,6 @@ umain(int argc, char **argv)
 {
 	// Set page fault handler
 	set_pgfault_handler(pg_handler);
-
-	// Initialize client socket
-        if ((clientsock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
-                die("Doomed!");
 
 	while (1) {
 		// GC completed leases
