@@ -416,7 +416,7 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 
 	// Is receiver suspended?
 	if (rcv->env_status == ENV_SUSPENDED) {
-		return -E_INVAL; // lib/ipc.c will retry
+		return -E_IPC_NOT_RECV; // lib/ipc.c will retry
 	}
 
 	// Is receiver waiting?
