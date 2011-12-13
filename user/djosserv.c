@@ -105,8 +105,8 @@ check_lease_complete()
 
 		// See if env is free by now
 		if (lease_map[i].status == LE_DONE) {
-			if (e->env_alien != 1 ||
-			    e->env_status == ENV_FREE) {
+			if (e->env_alien == 1 &&
+			    e->env_status != ENV_FREE) {
 				if (debug) {
 					cprintf("GCing completed lease "
 						"%d: %x\n",
@@ -159,6 +159,11 @@ process_start_lease(char *buffer)
 			"  env_hostip: %x\n",
 			req_env.env_id, req_env.env_parent_id,
 			req_env.env_status, req_env.env_hostip);
+	}
+
+	// Check if an entry is already in leasemap
+	if (find_lease(src_id) >= 0) {
+		return -E_BAD_REQ;
 	}
 
 	// Env must have status = ENV_SUSPENDED

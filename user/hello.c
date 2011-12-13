@@ -10,7 +10,6 @@ umain(int argc, char **argv)
 	if (!id) {
 		while ((r = sys_migrate(&thisenv)) < 0) {
 			sys_yield();
-			cprintf("===> Child retrying migrate...\n");
 		}
 
 		cprintf("===> World %d\n", r);
@@ -20,7 +19,6 @@ umain(int argc, char **argv)
 
 		while ((r = sys_migrate(&thisenv)) < 0) {
 			sys_yield();
-			cprintf("===> Parent retrying migrate...\n");
 		}
 
 		cprintf("===> DeadBeef %d\n", r);
