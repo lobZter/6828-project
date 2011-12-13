@@ -356,6 +356,7 @@ process_ipc_start(char *buffer)
 
 	// FIX syscall api to ensure ipc souce reflected as packet.pkt_src
 	*((envid_t *) DJOSTEMP) = packet.pkt_src;
+	cprintf("djos ipc from req %x to %x\n", packet.pkt_src, dst);
 	r = sys_ipc_try_send(dst, packet.pkt_val, (void *) packet.pkt_va, 
 			     packet.pkt_perm);
 	switch (r) {
