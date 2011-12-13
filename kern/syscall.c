@@ -399,6 +399,8 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	// Is alien trying to send ipc back to home?
 	if (curenv->env_alien && 
 	    ((envid & 0xfff00000) == (curenv->env_hosteid & 0xfff00000))) {
+		cprintf("Sending from %x to %x via djos\n",
+			curenv->env_id, envid);
 		goto djos;
 	}
 
@@ -413,7 +415,7 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	}
 
 	// Is receiver suspended?
-	if (rcv->env_status == ENV_LEASED) {
+	if (rcv->env_status == ENV_SUSPENDED) {
 		return -E_INVAL; // lib/ipc.c will retry
 	}
 
