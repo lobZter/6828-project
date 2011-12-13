@@ -550,6 +550,7 @@ try_send_ipc(uintptr_t va)
 
 		// Check in lease_map
 		if ((r = find_lease(packet.pkt_dst) < 0)) {
+			cprintf("Sending IPC to DJOS to env not in map\n");
 			r = -E_BAD_ENV;
 			goto ipc_done;
 		}
