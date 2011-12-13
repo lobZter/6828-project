@@ -353,11 +353,11 @@ process_ipc_start(char *buffer)
 	else {
 		dst = packet.pkt_dst;
 	}
-	
+
 	// FIX syscall api to ensure ipc souce reflected as packet.pkt_src
+	*((envid_t *) DJOSTEMP) = packet.pkt_src;
 	r = sys_ipc_try_send(dst, packet.pkt_val, (void *) packet.pkt_va, 
 			     packet.pkt_perm);
-	cprintf("ipc try send got owned\n");
 	switch (r) {
 	case -E_IPC_NOT_RECV:
 		return -E_NO_IPC;
@@ -527,6 +527,12 @@ umain(int argc, char **argv)
 	echoserver.sin_port = htons(SPORT);		  // server port
 
 	cprintf("Binding DJOS Receive Socket\n");
+
+	// Map temp page for IPC hack
+	if (sys_page_alloc(thisenv->env_id, (void *) DJOSTEMP, 
+			   PTE_U | PTE_P | PTE_W) < 0) {
+		die("Failed to allocate temp page for DJOS serv");
+	}
 
 	// Bind the server socket
 	if (bind(serversock, (struct sockaddr *) &echoserver,

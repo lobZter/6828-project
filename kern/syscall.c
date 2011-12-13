@@ -474,7 +474,16 @@ local:
 
 	// Set received data fields of receiver
 	rcv->env_ipc_value = value;
-	rcv->env_ipc_from = curenv->env_id;
+
+	// Special case if IPC from JDOSC to USER
+	if (curenv->env_type == ENV_TYPE_JDOSC &&
+	    rcv->env_type == ENV_TYPE_USER) {
+		rcv->env_ipc_from = *((envid_t *)(DJOSTEMP));
+	}
+	else {
+		rcv->env_ipc_from = curenv->env_id;
+	}
+
 	rcv->env_ipc_perm = perm;
 
 	// Mark receiver as RUNNABLE
@@ -768,17 +777,19 @@ sys_migrate(void *thisenv)
 
 	// Mark suspended and try to migrate
 	curenv->env_status = ENV_SUSPENDED; 
-	sys_page_alloc(curenv->env_id, (void *) IPCSND, PTE_U|PTE_P|PTE_W);
+	r = sys_page_alloc(curenv->env_id, (void *) IPCSND, PTE_U|PTE_P|PTE_W);
 
-	// Put data in temp page
-	*((envid_t *) IPCSND) = curenv->env_id;
-	*((void **)(IPCSND + sizeof(envid_t))) = thisenv;
+	if (r >= 0) { 
+		// Put data in temp page
+		*((envid_t *) IPCSND) = curenv->env_id;
+		*((void **)(IPCSND + sizeof(envid_t))) = thisenv;
 
-	// Try sending dipc to jc
-	r = sys_dipc_try_send(CLIENT_LEASE_REQUEST, (void *) IPCSND);
+		// Try sending dipc to jc
+		r = sys_dipc_try_send(CLIENT_LEASE_REQUEST, (void *) IPCSND);
 
-	// Unmap temp page
-	sys_page_unmap(curenv->env_id, (void *) IPCSND);
+		// Unmap temp page
+		sys_page_unmap(curenv->env_id, (void *) IPCSND);
+	}
 
 	// Failed to migrate, back to running!
 	if (r < 0) {
