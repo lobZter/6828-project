@@ -105,8 +105,8 @@ check_lease_complete()
 
 		// See if env is free by now
 		if (lease_map[i].status == LE_DONE) {
-			if (e->env_alien == 1 &&
-			    e->env_status != ENV_FREE) {
+			if (e->env_alien != 1 ||
+			    e->env_status == ENV_FREE) {
 				if (debug) {
 					cprintf("GCing completed lease "
 						"%d: %x\n",
