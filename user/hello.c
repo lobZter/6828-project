@@ -24,8 +24,8 @@ umain(int argc, char **argv)
 		cprintf("===> Hello World! I am child at %x.\n", 
 			thisenv->env_id);
 
-		cprintf("===> Got %x from %x.\n", r, id);
 		r = ipc_recv(&id, NULL, NULL);
+		cprintf("===> Got %x from %x.\n", r, id);
 
 		ipc_send(thisenv->env_parent_id, 0x200, NULL, 0);
 		cprintf("===> Sending 200 to parent at %x.\n", 
