@@ -331,25 +331,30 @@ process_ipc_start(char *buffer)
 
 	struct ipc_pkt packet = *((struct ipc_pkt *) buffer);
 
-	if ((r = find_lease(packet.pkt_dst)) < 0) {
-		return -E_FAIL;
-	}
-
-	dst = lease_map[r].dst;
-
 	if (debug) {
 		cprintf("New IPC packet: \n"
 			"  src_id: %x\n"
 			"  dst_id: %x\n"
-			"  local dst: %x\n"
+			"  to alien?: %x\n"
 			"  val: %d\n",
-			packet.pkt_src, packet.pkt_dst, dst, packet.pkt_val);
-	}
-	
-	if (!packet.pkt_va) {
-		packet.pkt_va = UTOP;
+			packet.pkt_src, packet.pkt_dst, packet.pkt_toalien, 
+			packet.pkt_val);
 	}
 
+	// IPC to an alien env
+	if (packet.pkt_toalien) {
+		if ((r = find_lease(packet.pkt_dst)) < 0) {
+			return -E_FAIL;
+		}		
+
+		dst = lease_map[r].dst;
+	}
+	// IPC to a local env
+	else {
+		// nothing special to do, stuff done by djosclient
+	}
+	
+	// FIX syscall api to ensure ipc souce reflected as packet.pkt_src
 	r = sys_ipc_try_send(dst, packet.pkt_val, (void *) packet.pkt_va, 
 			     packet.pkt_perm);
 
@@ -361,7 +366,7 @@ process_ipc_start(char *buffer)
 	case -E_BAD_ENV:
 		return -E_FAIL;
 	}
-	cprintf("sending ipc response as %d\n", r);
+
 	return r;
 }
 int

@@ -45,6 +45,7 @@ struct ipc_pkt {
 	uint32_t pkt_val;
 	uintptr_t pkt_va;
 	unsigned pkt_perm;
+	bool pkt_toalien;
 };
 
 #endif // JOS_USER_DJOS_H

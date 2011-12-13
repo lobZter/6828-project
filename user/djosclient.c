@@ -497,16 +497,6 @@ send_ipc_req(struct ipc_pkt *packet, uint32_t ip)
 		default:
 			continue;
 		}
-
-/*		if (r < 0) goto error;
-		
-		r = send_done_request(packet->pkt_src, DONE_IPC);
-		if (r < 0) goto error;
-
-		break;
-	error:
-		send_abort_request(packet->pkt_src);
-*/
 	}
 
 	if (cretry > (RETRIES + 1)) return -E_INVAL;
@@ -514,58 +504,78 @@ send_ipc_req(struct ipc_pkt *packet, uint32_t ip)
 	return 0;
 }
 void
-try_send_ipc(envid_t src_id, uintptr_t va, int perm)
+try_send_ipc(uintptr_t va)
 {
-	struct Env e;
+	struct Env *d, *s;
 	uint32_t ip;
 	int r;
 	struct ipc_pkt packet;
-	
-	packet.pkt_src = src_id;
-	packet.pkt_dst = *((envid_t *) va);
-	packet.pkt_val = *((uint32_t *) (va + sizeof(envid_t)));
-	packet.pkt_va = 0;
-	packet.pkt_perm = *((unsigned *) (va + sizeof(envid_t) + 
-					  sizeof(uint32_t)));
+	bool snd_alien;
+
+	packet.pkt_src = *((envid_t *) va);
+	packet.pkt_dst = *((envid_t *) (va + sizeof(envid_t)));
+	packet.pkt_val = *((uint32_t *) (va + 2*sizeof(envid_t)));
+	packet.pkt_va = *((uintptr_t *) (va + 2*sizeof(envid_t) + 
+				     sizeof(uint32_t)));
+	packet.pkt_perm = *((unsigned *) (va + 2*sizeof(envid_t) + 
+					  sizeof(uint32_t) + 
+					  sizeof (void *)));
+
+	// Don't allow sending pages right now!
+	packet.pkt_va = UTOP;
 
 	// Get envid from ipc *value*, check env exists
-	memmove((void *) &e, (void *) &envs[ENVX(packet.pkt_dst)], 
-		sizeof(struct Env));
+	s = (struct Env *) &envs[ENVX(packet.pkt_src)];
+	d = (struct Env *) &envs[ENVX(packet.pkt_dst)];
 
-	// Ids must match
-	if (e.env_id != packet.pkt_dst) {
-		cprintf("Env id mismatch in ipc %x, %x!\n",
-			e.env_id, packet.pkt_dst);
-		r = -E_BAD_ENV;
-	}
+	snd_alien = s->env_alien;
 
-	// Status must be ENV_LEASED
-	if (e.env_status != ENV_LEASED) {
-		cprintf("Sending IPC via DJOS to unleased process!\n", 
-			e.env_id);
-		r = -E_BAD_ENV;
-	}
-	else {
-		// Put in lease_map
-		if ((r = find_lease(packet.pkt_dst) >= 0)) {
-			ip = lease_map[r].lessee_ip;
-			// Try sending env
-			r = send_ipc_req(&packet, ip);
-		}
-		else {
+	// Sending from native machine to leased env
+	if (!snd_alien) {
+		// Ids must match
+		if (d->env_id != packet.pkt_dst) {
+			cprintf("Env id mismatch in ipc %x, %x!\n",
+				d->env_id, packet.pkt_dst);
 			r = -E_BAD_ENV;
+			goto ipc_done;
 		}
+
+		// Status must be ENV_LEASED
+		if (d->env_status != ENV_LEASED) {
+			cprintf("Sending IPC via DJOS to unleased process!\n", 
+				d->env_id);
+			r = -E_BAD_ENV;
+			goto ipc_done;
+		}
+
+		// Check in lease_map
+		if ((r = find_lease(packet.pkt_dst) < 0)) {
+			r = -E_BAD_ENV;
+			goto ipc_done;
+		}
+
+		ip = lease_map[r].lessee_ip;
+		packet.pkt_toalien = 1;
+	}
+	// Sending from alien machine to host machine
+	else {
+		packet.pkt_src = s->env_hosteid;
+		ip = s->env_hostip;
+		packet.pkt_toalien = 0;
 	}
 
+	r = send_ipc_req(&packet, ip);
+
+ipc_done:
 	// If ipc failed, then set eax to r to indicate failure
 	// And mark ENV_RUNNABLE
 	if (r < 0) {
 		cprintf("IPC to server failed! Aborting...\n");
-		sys_env_unsuspend(src_id, ENV_RUNNABLE, r);
+		sys_env_unsuspend(s->env_id, ENV_RUNNABLE, r);
 	}
 	else {
 		// Mark success and run again
-		sys_env_unsuspend(src_id, ENV_RUNNABLE, 0);
+		sys_env_unsuspend(s->env_id, ENV_RUNNABLE, 0);
 	}
 }
 
@@ -584,7 +594,7 @@ process_request()
 		try_send_lease_completed(*((envid_t *) IPCRCV));
 		return;
 	case CLIENT_SEND_IPC:
-		//try_send_ipc(sender, (uintptr_t) IPCRCV, perm);
+		try_send_ipc((uintptr_t) IPCRCV);
 		return;
 	default:
 		return;

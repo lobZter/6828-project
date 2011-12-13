@@ -13,6 +13,16 @@ umain(int argc, char **argv)
 		}
 
 		cprintf("===> World %d\n", r);
+
+		id = fork();
+		
+		if (!id) {
+			while ((r = sys_migrate(&thisenv)) < 0) {
+				sys_yield();
+			}
+
+			cprintf("===> I'm back! %d\n", r);
+		}
 	}
 	else {    
 		cprintf("===> Hello\n");

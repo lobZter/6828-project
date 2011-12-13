@@ -15,6 +15,9 @@
 #include <kern/e1000.h>
 #include <user/djos.h>
 
+static int sys_dipc_try_send(char reqno, void *srcva);
+
+
 // Print a string to the system console.
 // The string is exactly 'len' characters long.
 // Destroys the environment on memory errors.
@@ -391,16 +394,64 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	struct Env *rcv;
 	pte_t *pte;
 	struct Page *pp;
+        int i, r;
+
+	// Is alien trying to send ipc?
+	if (curenv->env_alien) {
+		goto djos;
+	}
 
 	// Is receiver valid?
 	if (envid2env(envid, &rcv, 0) < 0) {
 		return -E_BAD_ENV;
 	}
 
+	// Is receiver leased?
+	if (rcv->env_status == ENV_LEASED) {
+		goto djos;
+	}
+
 	// Is receiver waiting?
 	if (!rcv->env_ipc_recving) {
 		return -E_IPC_NOT_RECV;
 	}
+
+	goto local;
+
+
+djos:
+	// DJOS IPC SEND
+
+        // Mark suspended and try to send ipc
+        curenv->env_status = ENV_SUSPENDED;
+        sys_page_alloc(curenv->env_id, (void *) IPCSND, PTE_U|PTE_P|PTE_W);
+
+        // Put data in temp page
+        *((envid_t *) IPCSND) = curenv->env_id; // sender
+        *((envid_t *)(IPCSND + sizeof(envid_t))) = envid; // receiver
+	*((uint32_t *)(IPCSND + 2*sizeof(envid_t))) = value;
+	*((void **) (IPCSND + 2*sizeof(envid_t) + sizeof(uint32_t)))
+		= srcva;
+	*((unsigned *) (IPCSND + 2*sizeof(envid_t)+ sizeof(uint32_t) +
+			sizeof (void *))) = perm;
+
+        // Try sending dipc to jc
+        r = sys_dipc_try_send(CLIENT_SEND_IPC, (void *) IPCSND);
+
+        // Unmap temp page
+        sys_page_unmap(curenv->env_id, (void *) IPCSND);
+
+        // Failed to migrate, back to running!
+        if (r < 0) {
+                curenv->env_status = ENV_RUNNABLE;
+                return r;
+        }
+
+        // Sent IPC to server
+        return 0;
+
+local:
+	// LOCAL JOS IPC SEND
 
 	// Try mapping page from sender to receiver (if receiver wants it, 
         // and sender wants to send it)
@@ -635,7 +686,6 @@ sys_env_unsuspend(envid_t envid, uint32_t status, uint32_t value)
 
 	return 0;
 }
-
 
 static int
 sys_dipc_try_send(char reqno, void *srcva)
