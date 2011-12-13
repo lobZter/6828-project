@@ -75,7 +75,8 @@ ipc_send(envid_t to_env, uint32_t val, void *pg, int perm)
 			break; // success
 		} 
 		else if (err != -E_IPC_NOT_RECV) {
-			panic("ipc_send failed with error %d.\n", err);
+			panic("ipc_send to %08x failed with error %d.\n", 
+			      to_env, err);
 		}
 
 		sys_yield();
