@@ -343,7 +343,7 @@ process_ipc_start(char *buffer)
 
 	// IPC to an alien env
 	if (packet.pkt_toalien) {
-		if ((r = find_lease(packet.pkt_dst)) < 0) {
+		if ((r = find_lease(packet.pkt_src)) < 0) {
 			return -E_FAIL;
 		}		
 
