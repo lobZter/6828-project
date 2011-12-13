@@ -755,7 +755,8 @@ sys_lease_complete()
 
 	if ((r = envid2env(jdos_client, &e, 0)) < 0) return r;
 
-	// Alloc temp page
+	// Mark suspended and alloc temp page
+	curenv->env_status = ENV_SUSPENDED;
 	sys_page_alloc(curenv->env_id, (void *) IPCSND, PTE_U|PTE_P|PTE_W);
 
 	// Put data in it
@@ -769,10 +770,12 @@ sys_lease_complete()
 
 	// Failed to migrate, back to running!
 	if (r < 0) {
-		cprintf("sys_lease_completed: failed to send dipc %d\n", r);
+		curenv->env_status = ENV_RUNNABLE;
+		return r;
 	}
 
-	return r;
+	// LC req sent!
+	return 0;
 }
 
 int
