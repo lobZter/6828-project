@@ -344,6 +344,7 @@ process_ipc_start(char *buffer)
 	// IPC to an alien env
 	if (packet.pkt_toalien) {
 		if ((r = find_lease(packet.pkt_src)) < 0) {
+			cprintf("didn't find in map\n");
 			return -E_FAIL;
 		}		
 
@@ -357,7 +358,7 @@ process_ipc_start(char *buffer)
 	// FIX syscall api to ensure ipc souce reflected as packet.pkt_src
 	r = sys_ipc_try_send(dst, packet.pkt_val, (void *) packet.pkt_va, 
 			     packet.pkt_perm);
-
+	cprintf("ipc try send got owned\n");
 	switch (r) {
 	case -E_IPC_NOT_RECV:
 		return -E_NO_IPC;
