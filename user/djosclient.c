@@ -466,13 +466,13 @@ send_ipc_start(struct ipc_pkt *packet)
 	memmove((void *) (buffer + 1), 
 		(void *) packet, sizeof(struct ipc_pkt));
 
-	if (debug){
+//	if (debug){
 		cprintf("Sending IPC Start: \n"
 			"  src_id: %x\n"
 			"  dst_id: %x\n"
 			"  val: %d\n",
 			packet->pkt_src, packet->pkt_dst, packet->pkt_val);
-	}
+//	}
 	
 	return send_buff(buffer, IPC_START_SZ);
 }
