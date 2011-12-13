@@ -351,7 +351,7 @@ process_ipc_start(char *buffer)
 	}
 	// IPC to a local env
 	else {
-		// nothing special to do, stuff done by djosclient
+		dst = packet.pkt_dst;
 	}
 	
 	// FIX syscall api to ensure ipc souce reflected as packet.pkt_src

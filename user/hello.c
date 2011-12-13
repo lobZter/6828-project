@@ -3,34 +3,25 @@
 void
 umain(int argc, char **argv)
 {
-	int id, r;
+	envid_t id;
+	int r;
 
 	id = fork();
 	
-	if (!id) {
+	if (!id) {	
 		while ((r = sys_migrate(&thisenv)) < 0) {
 			sys_yield();
 		}
-
-		cprintf("===> World %d\n", r);
-
-		id = fork();
 		
-		if (!id) {
-			while ((r = sys_migrate(&thisenv)) < 0) {
-				sys_yield();
-			}
-
-			cprintf("===> I'm back! %d\n", r);
-		}
+		cprintf("===> Hello World! I am child at %x.\n", 
+			thisenv->env_id);
+		r = ipc_recv(&id, NULL, NULL);
+		cprintf("===> Got %x from %x.", r, id);
 	}
 	else {    
-		cprintf("===> Hello\n");
-
-		while ((r = sys_migrate(&thisenv)) < 0) {
-			sys_yield();
-		}
-
-		cprintf("===> DeadBeef %d\n", r);
+		cprintf("===> Hello World! I am parent at %x.\n", 
+			thisenv->env_id);
+		ipc_send(id, 0x100, NULL, 0);
+		cprintf("===> Sending 100 to child at %x.", id);
 	}
 }
