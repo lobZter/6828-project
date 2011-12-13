@@ -304,7 +304,7 @@ process_abort_lease(char *buffer)
 	}
 
 	if ((i = find_lease(src_id)) >= 0) {
-		e = &envs[ENVX(lease_map[i].dst)];
+		e = (struct Env *) &envs[ENVX(lease_map[i].dst)];
 
 		// Already started process, can't abort
 		if (e->env_status == ENV_RUNNABLE) {
@@ -386,6 +386,8 @@ process_completed_lease(char *buffer)
 	else {
 		return -E_BAD_REQ;
 	}
+
+	return 0;
 }
 
 int

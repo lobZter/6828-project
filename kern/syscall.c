@@ -700,6 +700,10 @@ sys_migrate(void *thisenv)
 	struct Env *e;
 	int i, r;
 
+	if (curenv->env_alien) {
+		return -E_BAD_ENV;
+	}
+
 	for (i = 0; i < NENV; i++) {
 		if (envs[i].env_type == ENV_TYPE_JDOSC) {
 			jdos_client = envs[i].env_id;
@@ -742,6 +746,10 @@ sys_lease_complete()
 	envid_t jdos_client = 0;
 	struct Env *e;
 	int i, r;
+
+	if (!curenv->env_alien) {
+		return -E_BAD_ENV;
+	}
 
 	for (i = 0; i < NENV; i++) {
 		if (envs[i].env_type == ENV_TYPE_JDOSC) {

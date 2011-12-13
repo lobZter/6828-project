@@ -373,8 +373,8 @@ try_send_lease(envid_t envid, void *thisenv)
 		e.env_tf.tf_regs.reg_eax = 0;
 
 		// Set own ip ports
-		e->env_hostip = CLIENTIP;
-		e->env_hostport = CLIENTPORT;
+		e.env_hostip = CLIENTIP;
+		e.env_hostport = CLIENTPORT;
 			
 		// Put in lease_map
 		if ((r = put_lease(envid, SERVIP)) >= 0) {
@@ -426,7 +426,7 @@ try_send_lease_completed(envid_t envid)
 		e.env_id, e.env_hosteid);
 
 	while (ctries < RETRIES) {
-		cretries++;
+		ctries++;
 
 		buffer[0] = COMPLETED_LEASE;
 		*((envid_t *) (buffer + 1)) = e.env_hosteid;
