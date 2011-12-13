@@ -322,7 +322,9 @@ send_env(struct Env *env, void *thisenv)
 		if (r == -E_FAIL || r == -E_NO_LEASE) continue;
 		if (r < 0) goto error;
 		
-		cprintf("Leased request sent for %x.\n", env->env_id);
+		if (debug) {
+			cprintf("Leased request sent for %x.\n", env->env_id);
+		}
 
 		r = send_pages(env->env_id);
 		if (r == -E_FAIL) continue;
@@ -351,8 +353,6 @@ try_send_lease(envid_t envid, void *thisenv)
 {
 	struct Env e;
 	int r;
-
-	cprintf("Sending lease request for process %08x\n", envid);
 
 	// Get envid from ipc *value*
 	memmove((void *) &e, (void *) &envs[ENVX(envid)], 
