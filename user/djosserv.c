@@ -389,9 +389,10 @@ process_request(char *buffer)
 	req_type = *buffer;
 	buffer += 1;
 
-	if (debug) {
-		cprintf("Processing request type: %d\n", (int) req_type);
-	}
+//	if (debug) {
+		cprintf("Sevrer processing request type: %d\n", 
+			(int) req_type);
+//	}
 
 	switch((int)req_type) {
 	case PAGE_REQ:
