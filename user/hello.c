@@ -12,33 +12,43 @@ umain(int argc, char **argv)
 		while((r = sys_migrate(&thisenv)) < 0) {
 			sys_yield();
 		}
-	}
 
-	id = fork();
-
-	if (!id) {	
-		while ((r = sys_migrate(&thisenv)) < 0) {
-			sys_yield();
-		}
+		id = fork();
 		
-		cprintf("===> Hello World! I am child at %x.\n", 
-			thisenv->env_id);
+		if (!id) {	
+			while ((r = sys_migrate(&thisenv)) < 0) {
+				sys_yield();
+			}
+		
+			cprintf("===> Hello World! I am grand child at %x.\n", 
+				thisenv->env_id);
 
-		r = ipc_recv(&id, NULL, NULL);
-		cprintf("===> Got %x from %x.\n", r, id);
+			r = 0x100;
+			ipc_send(thisenv->env_parent_id, r, NULL, 0);
+			cprintf("===> Sent %x to %x from %x.\n", r, 
+				thisenv->env_parent_id, thisenv->env_id);
+		}
+		else {
+			cprintf("===> Hello World! I am child at %x.\n", 
+				thisenv->env_id);
+			
+			r = ipc_recv(&id, NULL, NULL);
+			cprintf("===> Got %x from %x to %x.\n", r, id,
+				thisenv->env_id);
 
-		ipc_send(thisenv->env_parent_id, 0x200, NULL, 0);
-		cprintf("===> Sending 200 to parent at %x.\n", 
-			thisenv->env_parent_id);
+			r = r + 0x100;
+			ipc_send(thisenv->env_parent_id, r, NULL, 0);
+			cprintf("===> Sent %x to %x from %x.\n", r,
+				thisenv->env_parent_id, thisenv->env_id);
+		}
 	}
 	else {    
 		cprintf("===> Hello World! I am parent at %x.\n", 
 			thisenv->env_id);
 
-		cprintf("===> Sending 100 to child at %x.\n", id);
-		ipc_send(id, 0x100, NULL, 0);
-
 		r = ipc_recv(&id, NULL, NULL);
-		cprintf("===> Got %x from %x.\n", r, id);
+		cprintf("===> Got %x from %x to %x.\n", r, id,
+			thisenv->env_id);
 	}
+
 }
