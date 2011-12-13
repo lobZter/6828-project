@@ -268,7 +268,7 @@ process_done_lease(char *buffer)
 
 	// Check lease map
 	if ((i = find_lease(src_id)) < 0) {
-		return -E_FAIL;
+		return -E_BAD_REQ;
 	}
 
 	if (!lease_map[i].dst) return -E_FAIL;
@@ -292,6 +292,7 @@ process_abort_lease(char *buffer)
 {
 	int i;
 	envid_t src_id;
+	struct Env *e;
 
 	// Destroy lease
 	src_id = *((envid_t *) buffer);
@@ -302,9 +303,16 @@ process_abort_lease(char *buffer)
 			src_id);
 	}
 
-	destroy_lease(src_id);
 	if ((i = find_lease(src_id)) >= 0) {
+		e = &envs[ENVX(lease_map[i].dst)];
+
+		// Already started process, can't abort
+		if (e->env_status == ENV_RUNNABLE) {
+			return -E_FAIL;
+		}
+
 		sys_env_destroy(lease_map[i].dst);
+		destroy_lease(src_id);
 	}
 
 	return 0;
@@ -373,10 +381,11 @@ process_completed_lease(char *buffer)
 
 	if (e->env_status == ENV_LEASED) {
 		i = sys_env_destroy(envid);
-		if (i < 0) return -E_BAD_REQ;
+		if (i < 0) return -E_FAIL;
 	}
-
-	return 0;
+	else {
+		return -E_BAD_REQ;
+	}
 }
 
 int
@@ -389,10 +398,10 @@ process_request(char *buffer)
 	req_type = *buffer;
 	buffer += 1;
 
-//	if (debug) {
+	if (debug) {
 		cprintf("Sevrer processing request type: %d\n", 
 			(int) req_type);
-//	}
+	}
 
 	switch((int)req_type) {
 	case PAGE_REQ:
@@ -403,10 +412,10 @@ process_request(char *buffer)
 		return process_done_lease(buffer);
 	case ABORT_LEASE:
 		return process_abort_lease(buffer);
-	case START_IPC:
-		return process_ipc_start(buffer);
 	case COMPLETED_LEASE:
 		return process_completed_lease(buffer);
+	case START_IPC:
+		return process_ipc_start(buffer);
 	default:
 		return -E_BAD_REQ;
 	}

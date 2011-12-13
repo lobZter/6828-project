@@ -114,21 +114,14 @@ connect_serv(uint32_t ip, uint32_t port)
         if ((clientsock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
                 die("Doomed!");
 
-	/* In this context client is actually DJOS server */
-
         memset(&client, 0, sizeof(client));             // Clear struct
         client.sin_family = AF_INET;                    // Internet/IP
         client.sin_addr.s_addr = htonl(ip);             // client ip
         client.sin_port = htons(port);                  // client port
 
-//	if (debug) {
+	if (debug) {
 		cprintf("Connecting to server at %x:%d...\n", ip, port);
-//	}
-
-	// 0x1001009 wants to send IPC to us. It is socket thread.
-	// We want to send IPC to ns serv for connect. 
-	// Serve while loop is halted because thread is not returning.
-	// We apparently get back socket request from 0x1001010.
+	}
 
         if ((r = connect(clientsock, (struct sockaddr *) &client,
                          sizeof(client))) < 0) {              
@@ -137,7 +130,9 @@ connect_serv(uint32_t ip, uint32_t port)
 		return -E_FAIL;
 	}
 
-	cprintf("Connected to server...\n");
+        if (debug) {
+                cprintf("Connected to server at %x:%d.\n", ip, port);
+        }
 
 	return clientsock;
 }
@@ -166,9 +161,9 @@ send_buff(const void *req, int len)
 
 	char buffer[BUFFSIZE];
 
-//	if (debug) {
+	if (debug) {
 		cprintf("Client sending request type: %d\n", *((char *) req));
-//	}
+	}
 
 	issue_request(sock, req, len);
 
@@ -177,8 +172,10 @@ send_buff(const void *req, int len)
 	}
 
 	// Receive message
-	if (read(sock, buffer, BUFFSIZE) < 0)
+	if (read(sock, buffer, BUFFSIZE) < 0) {
 		panic("Failed to read");
+	}
+
 	close(sock);
 	       
 	if (debug) {
@@ -205,9 +202,6 @@ send_lease_req(envid_t envid, void *thisenv, struct Env *env)
 	memmove(e, (void *) env, sizeof(struct Env));
 	*((void **)(buffer + 1 + sizeof(struct Env) + sizeof(envid_t)))
 		= thisenv;
-
-	e->env_hostip = CLIENTIP;
-	e->env_hostport = CLIENTPORT;
 
 	if (debug){
 		cprintf("Sending struct Env: \n"
@@ -321,7 +315,7 @@ send_env(struct Env *env, void *thisenv)
 	int r, cretry = 0;
 	uintptr_t addr;
 	
-	while (cretry <= RETRIES) {
+	while (cretry < RETRIES) {
 		cretry++;
 
 		r = send_lease_req(env->env_id, thisenv, env);
@@ -329,12 +323,13 @@ send_env(struct Env *env, void *thisenv)
 		if (r < 0) goto error;
 		
 		r = send_pages(env->env_id);
-		if (r == -E_NO_MEM) return -E_FAIL;
 		if (r == -E_FAIL) continue;
+		if (r == -E_NO_MEM) goto error;
 
 		if (r < 0) goto error;
 
 		r = send_done_request(env->env_id, DONE_LEASE);
+		if (r == -E_BAD_REQ) continue;
 		if (r < 0) goto error;
 
 		break;
@@ -342,9 +337,10 @@ send_env(struct Env *env, void *thisenv)
 		send_abort_request(env->env_id);
 	}
 
-	if (cretry > (RETRIES + 1)) {
+	if (cretry >= RETRIES) {
 		return -E_FAIL;
 	}
+
 	return 0;
 }
 
@@ -375,8 +371,10 @@ try_send_lease(envid_t envid, void *thisenv)
 	else {
 		// Set eax to 0, to appear migrate call succeed
 		e.env_tf.tf_regs.reg_eax = 0;
-		e.env_hostip = CLIENTIP; // Set my client ip
-		e.env_hostport = 0x7;
+
+		// Set own ip ports
+		e->env_hostip = CLIENTIP;
+		e->env_hostport = CLIENTPORT;
 			
 		// Put in lease_map
 		if ((r = put_lease(envid, SERVIP)) >= 0) {
@@ -389,7 +387,7 @@ try_send_lease(envid_t envid, void *thisenv)
 	// And mark ENV_RUNNABLE
 	if (r < 0) {
 		cprintf("Lease to server failed! Aborting...\n");
-		sys_env_unsuspend(envid, ENV_RUNNABLE, -E_INVAL);
+		sys_env_unsuspend(envid, ENV_RUNNABLE, r);
 		delete_lease(envid);
 	}
 	else {
@@ -413,10 +411,10 @@ try_send_lease_completed(envid_t envid)
 	if (e.env_id != envid) {
 		cprintf("Env id mismatch in completed %x, %x!\n",
 			e.env_id, envid);
-		return; // That env doesn't exist
+		return;
 	}
 
-	// Status must be ENV_LEASED
+	// Status must be ENV_SUSPENDED
 	if (e.env_status != ENV_SUSPENDED) {
 		cprintf("Failed to lease complete envid %x. Not suspended!\n", 
 			envid);
@@ -427,17 +425,17 @@ try_send_lease_completed(envid_t envid)
 	cprintf("Finished executing process %08x->%08x.\n", 
 		e.env_id, e.env_hosteid);
 
-	while (ctries <= RETRIES) {
+	while (ctries < RETRIES) {
+		cretries++;
+
 		buffer[0] = COMPLETED_LEASE;
 		*((envid_t *) (buffer + 1)) = e.env_hosteid;
 		r = send_buff(buffer, LEASE_COMP_SZ);
 
 		if (!r || r == -E_BAD_REQ) break;
-
-		ctries++;
 	}
 
-	if (ctries > RETRIES) {
+	if (ctries >= RETRIES) {
 		r = -E_FAIL;
 		goto end;
 	}
@@ -445,7 +443,7 @@ try_send_lease_completed(envid_t envid)
 end:
 	if (r < 0) {
 		cprintf("Complete lease to server failed! Aborting...\n");
-		sys_env_unsuspend(envid, ENV_RUNNABLE, -E_INVAL);
+		sys_env_unsuspend(envid, ENV_RUNNABLE, r);
 	}
 	else {
 		// Do what?

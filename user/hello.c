@@ -3,7 +3,7 @@
 void
 umain(int argc, char **argv)
 {
-/*	int id, r;
+	int id, r;
 
 	id = fork();
 	
@@ -25,9 +25,4 @@ umain(int argc, char **argv)
 
 		cprintf("===> DeadBeef %d\n", r);
 	}
-*/
-	cprintf("Hello\n");
-	sys_migrate(&thisenv);
-	cprintf("World\n");
-
 }
