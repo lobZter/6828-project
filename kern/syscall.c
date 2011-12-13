@@ -411,6 +411,11 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 		goto djos;
 	}
 
+	// Is receiver suspended?
+	if (rcv->env_status == ENV_LEASED) {
+		return -E_INVAL; // lib/ipc.c will retry
+	}
+
 	// Is receiver waiting?
 	if (!rcv->env_ipc_recving) {
 		return -E_IPC_NOT_RECV;
