@@ -380,7 +380,7 @@ lwip_connect(int s, const struct sockaddr *name, socklen_t namelen)
 {
   struct lwip_socket *sock;
   err_t err;
-  cprintf("boom1\n");
+
   sock = get_socket(s);
   if (!sock)
     return -1;
@@ -388,14 +388,14 @@ lwip_connect(int s, const struct sockaddr *name, socklen_t namelen)
   LWIP_ERROR("lwip_connect: invalid address", ((namelen == sizeof(struct sockaddr_in)) &&
              ((((struct sockaddr_in *)name)->sin_family) == AF_INET)),
              sock_set_errno(sock, err_to_errno(ERR_ARG)); return -1;);
-  cprintf("boom2\n");
+
   if (((struct sockaddr_in *)name)->sin_family == AF_UNSPEC) {
     LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_connect(%d, AF_UNSPEC)\n", s));
     err = netconn_disconnect(sock->conn);
   } else {
     struct ip_addr remote_addr;
     u16_t remote_port;
-  cprintf("boom3\n");
+
     remote_addr.addr = ((struct sockaddr_in *)name)->sin_addr.s_addr;
     remote_port = ((struct sockaddr_in *)name)->sin_port;
 
@@ -405,7 +405,7 @@ lwip_connect(int s, const struct sockaddr *name, socklen_t namelen)
 
     err = netconn_connect(sock->conn, &remote_addr, ntohs(remote_port));
   }
-  cprintf("boom4\n");
+
   if (err != ERR_OK) {
     LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_connect(%d) failed, err=%d\n", s, err));
     sock_set_errno(sock, err_to_errno(err));
