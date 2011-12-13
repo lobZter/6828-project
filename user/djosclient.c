@@ -471,7 +471,7 @@ send_ipc_start(struct ipc_pkt *packet)
 			"  src_id: %x\n"
 			"  dst_id: %x\n"
 			"  val: %d\n"
-			"  toalien?: %d",
+			"  toalien?: %d\n",
 			packet->pkt_src, packet->pkt_dst, packet->pkt_val,
 			packet->pkt_toalien);
 //	}
