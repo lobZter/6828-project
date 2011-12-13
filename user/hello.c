@@ -16,12 +16,19 @@ umain(int argc, char **argv)
 		cprintf("===> Hello World! I am child at %x.\n", 
 			thisenv->env_id);
 		r = ipc_recv(&id, NULL, NULL);
-		cprintf("===> Got %x from %x.", r, id);
+		cprintf("===> Got %x from %x.\n", r, id);
+
+		ipc_send(thisenv->env_parent_id, 0x200, NULL, 0);
+		cprintf("===> Sending 200 to parent at %x.\n", 
+			thisenv->env_parent_id);
 	}
 	else {    
 		cprintf("===> Hello World! I am parent at %x.\n", 
 			thisenv->env_id);
 		ipc_send(id, 0x100, NULL, 0);
-		cprintf("===> Sending 100 to child at %x.", id);
+		cprintf("===> Sending 100 to child at %x.\n", id);
+
+		r = ipc_recv(&id, NULL, NULL);
+		cprintf("===> Got %x from %x.\n", r, id);
 	}
 }
