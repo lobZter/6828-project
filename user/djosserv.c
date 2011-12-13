@@ -411,10 +411,12 @@ process_request(char *buffer)
 	req_type = *buffer;
 	buffer += 1;
 
-	if (debug) {
+//	if (debug) {
 		cprintf("Sevrer processing request type: %d\n", 
 			(int) req_type);
-	}
+		cprintf("lease map contains 0520100e %d\n", 
+			find_lease(0x520100e));
+//	}
 
 	switch((int)req_type) {
 	case PAGE_REQ:
