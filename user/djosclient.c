@@ -524,6 +524,10 @@ try_send_ipc(uintptr_t va)
 	packet.pkt_perm = *((unsigned *) (va + 2*sizeof(envid_t) + 
 					  sizeof(uint32_t) + 
 					  sizeof (void *)));
+	packet.pkt_toalien = *((bool *) (va + 2*sizeof(envid_t) +
+					 sizeof(uint32_t) +
+					 sizeof (void *) + 
+					 sizeof(unsigned)));
 
 	// Don't allow sending pages right now!
 	packet.pkt_va = UTOP;
@@ -532,10 +536,8 @@ try_send_ipc(uintptr_t va)
 	s = (struct Env *) &envs[ENVX(packet.pkt_src)];
 	d = (struct Env *) &envs[ENVX(packet.pkt_dst)];
 
-	snd_alien = s->env_alien;
-
 	// Sending from native machine to leased env
-	if (!snd_alien) {
+	if (packet.pkt_toalien) {
 		// Ids must match
 		if (d->env_id != packet.pkt_dst) {
 			cprintf("Env id mismatch in ipc %x, %x!\n",
@@ -560,13 +562,11 @@ try_send_ipc(uintptr_t va)
 		}
 
 		ip = lease_map[r].lessee_ip;
-		packet.pkt_toalien = 1;
 	}
 	// Sending from alien machine to host machine
 	else {
 		packet.pkt_src = s->env_hosteid;
 		ip = s->env_hostip;
-		packet.pkt_toalien = 0;
 	}
 
 	r = send_ipc_req(&packet, ip);

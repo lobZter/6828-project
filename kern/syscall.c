@@ -395,10 +395,12 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	pte_t *pte;
 	struct Page *pp;
         int i, r;
+	bool toalien;
 
 	// Is alien trying to send ipc back to home?
 	if (curenv->env_alien && 
 	    ((envid & 0xfff00000) == (curenv->env_hosteid & 0xfff00000))) {
+		toalien = 0;
 		goto djos;
 	}
 
@@ -409,6 +411,7 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 
 	// Is receiver leased?
 	if (rcv->env_status == ENV_LEASED) {
+		toalien = 1;
 		goto djos;
 	}
 
@@ -440,6 +443,9 @@ djos:
 		= srcva;
 	*((unsigned *) (IPCSND + 2*sizeof(envid_t)+ sizeof(uint32_t) +
 			sizeof (void *))) = perm;
+	*((bool *) (IPCSND + 2*sizeof(envid_t)+ sizeof(uint32_t) +
+		    sizeof (void *) + sizeof(unsigned))) = toalien;
+
 
         // Try sending dipc to jc
         r = sys_dipc_try_send(CLIENT_SEND_IPC, (void *) IPCSND);
