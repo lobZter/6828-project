@@ -397,87 +397,38 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 		return -E_BAD_ENV;
 	}
 
-	if (rcv->env_status == ENV_SUSPENDED) {
+	// Is receiver waiting?
+	if (!rcv->env_ipc_recving) {
 		return -E_IPC_NOT_RECV;
 	}
 
-	if (rcv->env_status == ENV_LEASED) {
-		envid_t jdos_client = 0;
-		struct Env *e;
-		int i, r;
+	// Try mapping page from sender to receiver (if receiver wants it, 
+        // and sender wants to send it)
+	// NOTE: Can't use sys_map_page as it checks for env perms
+	if ((uint32_t) rcv->env_ipc_dstva < UTOP && (uint32_t) srcva < UTOP) {
+		if (!(pp = page_lookup(curenv->env_pgdir, srcva, &pte)))
+			return -E_INVAL;
 
-		for (i = 0; i < NENV; i++) {
-			if (envs[i].env_type == ENV_TYPE_JDOSC) {
-				jdos_client = envs[i].env_id;
-				break;
-			}
-		}
+		if ((perm & PTE_W) && !(*pte & PTE_W))
+			return -E_INVAL;
 
-		// jdos client running?
-		if (!jdos_client) return -E_BAD_ENV; 
-
-		if ((r = envid2env(jdos_client, &e, 0)) < 0) return r;
-
-		// Mark suspended and try to send ipc
-		curenv->env_status = ENV_SUSPENDED; 
-
-		sys_page_alloc(curenv->env_id, (void *) IPCSND, 
-			       PTE_U|PTE_P|PTE_W);
-
-		*((envid_t *) IPCSND) = rcv->env_id;
-		*((uint32_t *)(IPCSND + sizeof(envid_t))) = value;
-		*((unsigned *)(IPCSND + sizeof(envid_t) +
-				   sizeof(uint32_t))) = perm;
-
-		//can't write to page
-		r = sys_ipc_try_send(jdos_client, CLIENT_SEND_IPC, 
-				     (void *) IPCSND, PTE_U|PTE_P); 
-
-		sys_page_unmap(curenv->env_id, (void *) IPCSND);
-
-		// Failed to send ipc, back to running!
-		if (r < 0) {
-			cprintf("sys_sendipc: failed to send ipc %d\n", r);
-			curenv->env_status = ENV_RUNNABLE;
-			return r;
-		}
+		if (page_insert(rcv->env_pgdir, pp, rcv->env_ipc_dstva, perm) 
+		    < 0)
+			return -E_NO_MEM;
 	}
-	else {
-		// Is receiver waiting?
-		if (!rcv->env_ipc_recving) {
-			return -E_IPC_NOT_RECV;
-		}
-		
-		// Try mapping page from sender to receiver (if receiver 
-		// wants it, and sender wants to send it)
-		// NOTE: Can't use sys_map_page as it checks for env perms
-		if ((uint32_t) rcv->env_ipc_dstva < UTOP && 
-		    (uint32_t) srcva < UTOP) {
-			if (!(pp = page_lookup(curenv->env_pgdir, 
-					       srcva, &pte)))
-				return -E_INVAL;
-			
-			if ((perm & PTE_W) && !(*pte & PTE_W))
-				return -E_INVAL;
-			
-			if (page_insert(rcv->env_pgdir, pp, 
-					rcv->env_ipc_dstva, perm) < 0)
-				return -E_NO_MEM;
-		}
-		
-		// Set fields which mark receiver as not waiting
-		rcv->env_ipc_recving = 0;
-		rcv->env_ipc_dstva = (void *) UTOP; // invalid dstva
-		
-		// Set received data fields of receiver
-		rcv->env_ipc_value = value;
-		rcv->env_ipc_from = curenv->env_id;	
-		rcv->env_ipc_perm = perm;
-		
-		// Mark receiver as RUNNABLE
-		rcv->env_status = ENV_RUNNABLE;
-	}
-	
+
+	// Set fields which mark receiver as not waiting
+	rcv->env_ipc_recving = 0;
+	rcv->env_ipc_dstva = (void *) UTOP; // invalid dstva
+
+	// Set received data fields of receiver
+	rcv->env_ipc_value = value;
+	rcv->env_ipc_from = curenv->env_id;
+	rcv->env_ipc_perm = perm;
+
+	// Mark receiver as RUNNABLE
+	rcv->env_status = ENV_RUNNABLE;
+
 	return 0;
 }
 
