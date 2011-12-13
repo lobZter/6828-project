@@ -15,7 +15,7 @@
 #define GCTIME 300*1000   // Seconds after which abort
 
 /* Client params */
-#define RETRIES 5       // # of retries
+#define RETRIES 2       // # of retries
 #define CLEASES 5       // # of client leases
 #define IPCRCV (UTEMP + PGSIZE) // page to map ipc rcv
 #define IPCSND (UTEMP + PGSIZE) // page to map ipc rcv
