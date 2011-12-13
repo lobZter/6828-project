@@ -78,6 +78,10 @@ struct Env {
 	uint16_t env_hostport;          // Host port
 	bool env_alien;                 // Alien? From another planet
 	envid_t env_hosteid;            // Host env id
+
+	// IPC layer for DJOS
+	bool env_dipc_recving;
+	char env_dipc_reqno;
 };
 
 #endif // !JOS_INC_ENV_H

@@ -121,9 +121,9 @@ connect_serv(uint32_t ip, uint32_t port)
         client.sin_addr.s_addr = htonl(ip);             // client ip
         client.sin_port = htons(port);                  // client port
 
-	if (debug) {
+//	if (debug) {
 		cprintf("Connecting to server at %x:%d...\n", ip, port);
-	}
+//	}
 
 	// 0x1001009 wants to send IPC to us. It is socket thread.
 	// We want to send IPC to ns serv for connect. 
@@ -136,6 +136,8 @@ connect_serv(uint32_t ip, uint32_t port)
 		close(clientsock);
 		return -E_FAIL;
 	}
+
+	cprintf("Connected to server...\n");
 
 	return clientsock;
 }
@@ -163,6 +165,11 @@ send_buff(const void *req, int len)
 	if (sock < 0) return -E_FAIL;
 
 	char buffer[BUFFSIZE];
+
+//	if (debug) {
+		cprintf("Client sending request type: %d\n", *((char *) req));
+//	}
+
 	issue_request(sock, req, len);
 
 	if (debug) {
@@ -567,10 +574,7 @@ try_send_ipc(envid_t src_id, uintptr_t va, int perm)
 void
 process_request()
 {
-	int icode, perm;
-	envid_t sender;
-
-	icode = ipc_recv(&sender, (void *) IPCRCV, &perm);
+	char icode = dipc_recv();
 
 	switch(icode)
 	{
@@ -582,7 +586,7 @@ process_request()
 		try_send_lease_completed(*((envid_t *) IPCRCV));
 		return;
 	case CLIENT_SEND_IPC:
-		try_send_ipc(sender, (uintptr_t) IPCRCV, perm);
+		//try_send_ipc(sender, (uintptr_t) IPCRCV, perm);
 		return;
 	default:
 		return;

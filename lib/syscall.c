@@ -117,12 +117,6 @@ sys_ipc_recv(void *dstva)
 	return syscall(SYS_ipc_recv, 1, (uint32_t)dstva, 0, 0, 0, 0);
 }
 
-int 
-sys_ipc_set_recv(void *dstva)
-{
-	return syscall(SYS_ipc_set_recv, 1, (uint32_t)dstva, 0, 0, 0, 0);
-}
-
 unsigned int
 sys_time_msec(void)
 {
@@ -175,6 +169,18 @@ int
 sys_env_unsuspend(envid_t envid, uint32_t status, uint32_t value)
 {
 	return syscall(SYS_env_unsuspend, 1, (uint32_t) envid, (uint32_t) status, (uint32_t) value, 0, 0);
+}
+
+int
+sys_dipc_try_send(char reqno, void* srcva)
+{
+	return syscall(SYS_dipc_try_send, 1, (uint32_t) reqno, (uint32_t) srcva, 0, 0, 0);
+}
+
+int
+sys_dipc_recv()
+{
+	return syscall(SYS_dipc_recv, 1, 0, 0, 0, 0, 0);
 }
 
 int

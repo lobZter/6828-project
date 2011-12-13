@@ -59,7 +59,6 @@ int	sys_page_map(envid_t src_env, void *src_pg,
 int	sys_page_unmap(envid_t env, void *pg);
 int	sys_ipc_try_send(envid_t to_env, uint32_t value, void *pg, int perm);
 int	sys_ipc_recv(void *rcv_pg);
-int     sys_ipc_set_recv(void *rcv_pg);
 unsigned int sys_time_msec(void);
 int 	sys_env_swap(envid_t envid);
 int     sys_net_try_send(char *data, int len);
@@ -70,6 +69,8 @@ int     sys_copy_mem(envid_t env_id, void *addr, void* buf, int perm,
 		     bool frombuf);
 int     sys_get_perms(envid_t envid, void *va, int *perm);
 int     sys_env_unsuspend(envid_t envid, uint32_t status, uint32_t value);
+int     sys_dipc_try_send(char reqno, void *srcva);
+int     sys_dipc_recv();
 int     sys_migrate(void *thisenv);
 int     sys_lease_complete();
 int     sys_env_set_thisenv(envid_t envid, void *thisenv);
@@ -91,6 +92,7 @@ sys_exofork(void)
 void	ipc_send(envid_t to_env, uint32_t value, void *pg, int perm);
 int32_t ipc_recv(envid_t *from_env_store, void *pg, int *perm_store);
 envid_t	ipc_find_env(enum EnvType type);
+char dipc_recv();
 
 // fork.c
 #define	PTE_SHARE	0x400

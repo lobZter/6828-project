@@ -94,3 +94,17 @@ ipc_find_env(enum EnvType type)
 			return envs[i].env_id;
 	return 0;
 }
+
+char
+dipc_recv()
+{
+	// LAB 4: Your code here.
+	char reqno;
+
+	if ((reqno = sys_dipc_recv()) < 0) {
+		reqno = -1;
+	} else {
+		reqno = thisenv->env_dipc_reqno;
+	} 
+	return reqno;
+}
