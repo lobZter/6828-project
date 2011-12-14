@@ -462,6 +462,7 @@ issue_reply(int sock, int status, envid_t env_id)
 	if (write(sock, buf, len) != len) {
 		die("Failed to send response to client!");
 	}
+	cprintf("waiting\n");
 }
 
 void
