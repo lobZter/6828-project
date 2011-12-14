@@ -35,7 +35,7 @@ umain(int argc, char **argv)
 
 	if (thisenv->env_parent_id != 0) {
 		ipc_send(thisenv->env_parent_id, m*val, NULL, 0);
-		cprintf("===> (%x) I sent %x! to %x.\n", 
+		cprintf("===> (%x) I sent %d! to %x.\n", 
 			thisenv->env_id, m, 
 			thisenv->env_parent_id);
 	}
