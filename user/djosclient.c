@@ -512,13 +512,6 @@ send_ipc_start(struct ipc_pkt *packet, envid_t src_id, int sid)
 			packet->pkt_toalien);
 	}
 	
-	if (packet->pkt_va < UTOP) {
-		r = sys_copy_mem(src_id, (void *) packet->pkt_va,  
-				 (buffer + 1 + sizeof(struct ipc_pkt)), 
-				  PTE_U | PTE_P, 0);
-		if (r < 0) return r;		
-	}
-
 	return send_buff(buffer, IPC_START_SZ + 1024, sid);
 }
 
@@ -573,7 +566,7 @@ try_send_ipc(uintptr_t va)
 					 sizeof(unsigned)));
 
 	// Don't allow sending pages right now!
-//	packet.pkt_va = UTOP;
+	packet.pkt_va = UTOP;
 
 	// Get envid from ipc *value*, check env exists
 	s = (struct Env *) &envs[ENVX(packet.pkt_src)];

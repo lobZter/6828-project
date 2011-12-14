@@ -360,12 +360,6 @@ process_ipc_start(char *buffer)
 
 	d = (struct Env *) &envs[ENVX(dst)];
 
-	if (packet.pkt_va < UTOP && d->env_ipc_dstva) {
-		memmove((void *)(DJOSTEMP + sizeof(envid_t)),
-			(void *) buffer + 1 + sizeof(struct ipc_pkt),
-			1024);
-	}
-
 	r = sys_ipc_try_send(dst, packet.pkt_val, (void *) packet.pkt_va, 
 			     packet.pkt_perm);
 

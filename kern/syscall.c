@@ -498,19 +498,6 @@ next:
 	// Special case if IPC from JDOSC to USER
 	if (djos_sc) {
 		rcv->env_ipc_from = *((envid_t *)DJOSTEMP);
-
-		struct Env *snd;
-		snd = &envs[ENVX(rcv->env_ipc_from)];
-		if (snd->env_status == ENV_LEASED && 
-		    rcv->env_ipc_dstva) {
-			r = sys_page_alloc(rcv->env_id, rcv->env_ipc_dstva, 
-				       PTE_U|PTE_P|PTE_W);
-			cprintf("-> %d\n", r);
-			r = sys_copy_mem(rcv->env_id, rcv->env_ipc_dstva, 
-				     (void*)(DJOSTEMP + sizeof(envid_t)),
-				     PTE_U|PTE_P|PTE_W, 1);
-			cprintf("---> %d\n", r);
-		}	
 	}
 	else {
 		rcv->env_ipc_from = curenv->env_id;
