@@ -475,6 +475,7 @@ local:
 	// Try mapping page from sender to receiver (if receiver wants it, 
         // and sender wants to send it)
 	// NOTE: Can't use sys_map_page as it checks for env perms
+	if (djos_sc) goto next;
 	if ((uint32_t) rcv->env_ipc_dstva < UTOP && (uint32_t) srcva < UTOP) {
 		if (!(pp = page_lookup(curenv->env_pgdir, srcva, &pte)))
 			return -E_INVAL;
@@ -486,7 +487,7 @@ local:
 		    < 0)
 			return -E_NO_MEM;
 	}
-
+next:
 	// Set fields which mark receiver as not waiting
 	rcv->env_ipc_recving = 0;
 	rcv->env_ipc_dstva = (void *) UTOP; // invalid dstva

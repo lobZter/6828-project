@@ -361,7 +361,6 @@ process_ipc_start(char *buffer)
 	d = (struct Env *) &envs[ENVX(dst)];
 
 	if (packet.pkt_va < UTOP && d->env_ipc_dstva) {
-		cprintf("Boom from buffer to temp\n");
 		memmove((void *)(DJOSTEMP + sizeof(envid_t)),
 			(void *) buffer + 1 + sizeof(struct ipc_pkt),
 			1024);
