@@ -486,7 +486,7 @@ handle_client(int sock)
 
 		// Send reply to request
 		issue_reply(sock, r, *((envid_t *)(buffer + 1)));
-
+		cprintf("boom boom\n");
 		// no keep alive
 		break;
 	}
