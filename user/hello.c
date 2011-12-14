@@ -3,24 +3,38 @@
 void
 umain(int argc, char **argv)
 {
-	int id, val;
-	
-	id = fork();
+	int n = 2;
+	int id, val, m;
 
-	while (sys_migrate(&thisenv) < 0) {
-		sys_yield();
+	while (n > 1) {
+		if (n == 1) {
+			cprintf("==> (%x) I am env %d.\n", 
+				thisenv->env_id, 1);
+			ipc_send(thisenv->env_parent_id, 1, NULL, 0);
+			exit();
+		}
+
+		id = fork();
+
+		if (!id) {
+			while (sys_migrate(&thisenv) < 0) {
+				sys_yield();
+			}		
+		}
+		else {
+			m = n;
+			break;
+		}
+		n--;
 	}
 
-	if (!id) {
-		cprintf("===> Hello World! I am child.\n");
-		val = ipc_recv(NULL, NULL, NULL);
-		cprintf("===> I got %x from %x.\n", val, 
-			thisenv->env_ipc_from);
-	}
-	else {
-		cprintf("===> Hello World! I am parent.\n");
-		val = 0x100;
-		ipc_send(id, val, NULL, 0);
-		cprintf("===> I sent %x.\n", val);
+	cprintf("===> (%x) I am env %d.\n", thisenv->env_id, m);
+	val = ipc_recv(NULL, NULL, NULL);
+	cprintf("===> (%x) %d! is %d.\n", thisenv->env_id, m, m*val);
+
+	if (thisenv->env_parent_id != 0) {
+		ipc_send(thisenv->env_parent_id, val, NULL, 0);
+		cprintf("===> (%x) I sent %x! to %x.\n", m, 
+			thisenv->env_parent_id);
 	}
 }
