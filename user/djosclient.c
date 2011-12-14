@@ -26,7 +26,6 @@ struct server {
 
 struct server server_map[] = { // # must match NSERVERS
 	{ 0x12bb0048, 26591 },
-//	{ 0x12bb0050, 25281 },
 	{ 0x12bb0049, 26591 },
 };
 
@@ -491,7 +490,7 @@ end:
 }
 
 int
-send_ipc_start(struct ipc_pkt *packet, int sid)
+send_ipc_start(struct ipc_pkt *packet, envid_t src_id, int sid)
 {
 	char buffer[IPC_START_SZ];
 	int r;
@@ -513,18 +512,26 @@ send_ipc_start(struct ipc_pkt *packet, int sid)
 			packet->pkt_toalien);
 	}
 	
+	// Copy 1024 bytes of data to buffer
+	if (packet->pkt_va < UTOP) {
+		r = sys_copy_mem(src_id, (void *) (packet->pkt_va),  
+				 (buffer + 1 + sizeof(struct ipc_pkt)), 
+				 PTE_U | PTE_P, 0);
+		if (r < 0) return r;
+	}
+
 	return send_buff(buffer, IPC_START_SZ, sid);
 }
 
 int
-send_ipc_req(struct ipc_pkt *packet, int sid)
+send_ipc_req(struct ipc_pkt *packet, envid_t src_id, int sid)
 {
 	int r, cretry = 0;
 	
 	while (cretry <= RETRIES) {
 		cretry++;
 
-		r = send_ipc_start(packet, sid);
+		r = send_ipc_start(packet, src_id, sid);
 
 		switch (r) {
 		case -E_NO_IPC:
@@ -606,7 +613,7 @@ try_send_ipc(uintptr_t va)
 		sid = s->env_hostsid;
 	}
 
-	r = send_ipc_req(&packet, sid);
+	r = send_ipc_req(&packet, s->env_id, sid);
 
 ipc_done:
 	// If ipc failed, then set eax to r to indicate failure
