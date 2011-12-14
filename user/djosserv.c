@@ -390,7 +390,7 @@ process_ipc_done(char *buffer)
 
 	struct ipc_pkt packet = *((struct ipc_pkt *) buffer);
 
-//	if (debug) {
+	if (debug) {
 		cprintf("New Done IPC packet: \n"
 			"  src_id: %x\n"
 			"  dst_id: %x\n"
@@ -398,7 +398,7 @@ process_ipc_done(char *buffer)
 			"  val: %d\n",
 			packet.pkt_src, packet.pkt_dst, packet.pkt_toalien, 
 			packet.pkt_val);
-//	}
+	}
 
 	// IPC to an alien env
 	if (packet.pkt_toalien) {
@@ -416,7 +416,8 @@ process_ipc_done(char *buffer)
 	d = (struct Env *) &envs[ENVX(dst)];
 
 	// Check ipc_from field
-	if (d->env_ipc_from != packet.pkt_src) {
+	if (d->env_ipc_from != packet.pkt_src ||
+	    d->env_id != packet.pkt_dst) {
 		return -E_BAD_REQ;
 	}
 
