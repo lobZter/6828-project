@@ -418,11 +418,6 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 		djos_sc = 1;
 	}
 
-	if (envid == 0x5201009) {
-		cprintf("getting try_send to parent %x with type %d\n", 
-			envid, rcv->env_status);
-	}
-
 	// Is receiver leased?
 	if (rcv->env_status == ENV_LEASED) {
 		cprintf("Case 2 (A) DJOS IPC curenv %x, rcv %x.\n", 
