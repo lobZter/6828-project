@@ -361,14 +361,6 @@ process_ipc_start(char *buffer)
 	r = sys_ipc_try_send(dst, packet.pkt_val, (void *) packet.pkt_va, 
 			     packet.pkt_perm);
 
-/*	if (!r) {
-		d = (struct Env *) &envs[ENVX(dst)];
-		if (d->env_status == ENV_RUNNABLE) {
-			cprintf("try send pass to %x, unsuspend\n", dst);
-			sys_env_unsuspend(dst, ENV_RUNNABLE, 0);
-		}
-	}
-*/
 	switch (r) {
 	case -E_IPC_NOT_RECV:
 		return -E_NO_IPC;
@@ -449,7 +441,6 @@ process_request(char *buffer)
 void
 issue_reply(int sock, int status, envid_t env_id)
 {
-	cprintf("lalala\n");
 	// For now only send status code back
 	if (debug) {
 		cprintf("Sending response: %d, %x\n", status, env_id);
@@ -463,7 +454,6 @@ issue_reply(int sock, int status, envid_t env_id)
 	if (write(sock, buf, len) != len) {
 		die("Failed to send response to client!");
 	}
-	cprintf("waiting\n");
 }
 
 void
@@ -487,7 +477,7 @@ handle_client(int sock)
 
 		// Send reply to request
 		issue_reply(sock, r, *((envid_t *)(buffer + 1)));
-		cprintf("boom boom\n");
+
 		// no keep alive
 		break;
 	}

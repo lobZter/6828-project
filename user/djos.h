@@ -3,7 +3,7 @@
 
 #include "ip.h"
 
-#define debug 1
+#define debug 0
 
 /* Common params */
 #define BUFFSIZE 1518   // Max packet size
