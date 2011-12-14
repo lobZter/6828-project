@@ -172,6 +172,18 @@ sys_env_unsuspend(envid_t envid, uint32_t status, uint32_t value)
 }
 
 int
+sys_dipc_try_send(char reqno, void* srcva)
+{
+	return syscall(SYS_dipc_try_send, 1, (uint32_t) reqno, (uint32_t) srcva, 0, 0, 0);
+}
+
+int
+sys_dipc_recv()
+{
+	return syscall(SYS_dipc_recv, 1, 0, 0, 0, 0, 0);
+}
+
+int
 sys_migrate(void *thisenv)
 {
 	return syscall(SYS_migrate, 1, (uint32_t) thisenv, 0, 0, 0, 0);

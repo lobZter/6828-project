@@ -261,8 +261,8 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 		cprintf("env_alloc: %x\n", e->env_id);
 	}
 
-	// Set hostip for DJOS
-	e->env_hostip = 0;
+	// Set hostsid for DJOS
+	e->env_hostsid = 0;
 	e->env_alien = 0;
 	e->env_hosteid = 0;
 	

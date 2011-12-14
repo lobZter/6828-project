@@ -15,10 +15,12 @@
 #define GCTIME 300*1000   // Seconds after which abort
 
 /* Client params */
-#define RETRIES 5       // # of retries
+#define RETRIES 2       // # of retries
 #define CLEASES 5       // # of client leases
 #define IPCRCV (UTEMP + PGSIZE) // page to map ipc rcv
 #define IPCSND (UTEMP + PGSIZE) // page to map ipc rcv
+#define DJOSTEMP (UTEMP + 2*PGSIZE) // temp page
+#define NSERVERS 2
 
 /* Protocol message types */
 #define PAGE_REQ 0
@@ -45,7 +47,11 @@ struct ipc_pkt {
 	uint32_t pkt_val;
 	uintptr_t pkt_va;
 	unsigned pkt_perm;
+<<<<<<< HEAD
 	bool pkt_fromalien;
+=======
+	bool pkt_toalien;
+>>>>>>> 89f6a7ac0a75f3a5bcb326ec156704b5edf25116
 };
 
 #endif // JOS_USER_DJOS_H

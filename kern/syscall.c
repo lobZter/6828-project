@@ -15,6 +15,9 @@
 #include <kern/e1000.h>
 #include <user/djos.h>
 
+static int sys_dipc_try_send(char reqno, void *srcva);
+
+
 // Print a string to the system console.
 // The string is exactly 'len' characters long.
 // Destroys the environment on memory errors.
@@ -391,6 +394,16 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	struct Env *rcv;
 	pte_t *pte;
 	struct Page *pp;
+        int i, r;
+	bool toalien;
+	bool djos_sc = 0;
+
+	// Is alien trying to send ipc back to home?
+	if (curenv->env_alien && 
+	    ((envid & 0xfff00000) == (curenv->env_hosteid & 0xfff00000))) {
+		toalien = 0;
+		goto djos;
+	}
 
 	envid_t jdos_client = 0;
 	struct Env *e;
@@ -407,10 +420,29 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 		return -E_BAD_ENV;
 	}
 
+	// Special case if IPC from JDOSC to USER
+	if (curenv->env_type == ENV_TYPE_JDOSS &&
+	    rcv->env_type != ENV_TYPE_NS) {
+		djos_sc = 1;
+	}
+
+	// Is receiver leased?
+	if (rcv->env_status == ENV_LEASED) {
+		toalien = 1;
+		goto djos;
+	}
+
+	// Is receiver suspended?
 	if (rcv->env_status == ENV_SUSPENDED) {
+		return -E_IPC_NOT_RECV; // lib/ipc.c will retry
+	}
+
+	// Is receiver waiting?
+	if (!rcv->env_ipc_recving) {
 		return -E_IPC_NOT_RECV;
 	}
 
+<<<<<<< HEAD
 	if (rcv->env_status == ENV_LEASED) { // is leased?
 	djos_send:
 		for (i = 0; i < NENV; i++) {
@@ -419,72 +451,99 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 				break;
 			}
 		}
+=======
+	goto local;
+>>>>>>> 89f6a7ac0a75f3a5bcb326ec156704b5edf25116
 
-		// jdos client running?
-		if (!jdos_client) return -E_BAD_ENV; 
 
-		if ((r = envid2env(jdos_client, &e, 0)) < 0) return r;
+djos:
+	// DJOS IPC SEND
 
-		// Mark suspended and try to send ipc
-		curenv->env_status = ENV_SUSPENDED; 
+        // Mark suspended and try to send ipc
+        curenv->env_status = ENV_SUSPENDED;
+        sys_page_alloc(curenv->env_id, (void *) IPCSND, PTE_U|PTE_P|PTE_W);
 
-		sys_page_alloc(curenv->env_id, (void *) IPCSND, 
-			       PTE_U|PTE_P|PTE_W);
+        // Put data in temp page
+        *((envid_t *) IPCSND) = curenv->env_id; // sender
+        *((envid_t *)(IPCSND + sizeof(envid_t))) = envid; // receiver
+	*((uint32_t *)(IPCSND + 2*sizeof(envid_t))) = value;
+	*((void **) (IPCSND + 2*sizeof(envid_t) + sizeof(uint32_t)))
+		= srcva;
+	*((unsigned *) (IPCSND + 2*sizeof(envid_t)+ sizeof(uint32_t) +
+			sizeof (void *))) = perm;
+	*((bool *) (IPCSND + 2*sizeof(envid_t)+ sizeof(uint32_t) +
+		    sizeof (void *) + sizeof(unsigned))) = toalien;
 
+<<<<<<< HEAD
 		*((envid_t *) IPCSND) = envid;
 		*((uint32_t *)(IPCSND + sizeof(envid_t))) = value;
 		*((unsigned *)(IPCSND + sizeof(envid_t) +
 				   sizeof(uint32_t))) = perm;
+=======
+>>>>>>> 89f6a7ac0a75f3a5bcb326ec156704b5edf25116
 
-		//can't write to page
-		r = sys_ipc_try_send(jdos_client, CLIENT_SEND_IPC, 
-				     (void *) IPCSND, PTE_U|PTE_P); 
+        // Try sending dipc to jc
+        r = sys_dipc_try_send(CLIENT_SEND_IPC, (void *) IPCSND);
 
-		sys_page_unmap(curenv->env_id, (void *) IPCSND);
+        // Unmap temp page
+        sys_page_unmap(curenv->env_id, (void *) IPCSND);
 
+<<<<<<< HEAD
 		// Failed to send ipc, back to running!
 		if (r < 0) {
 			cprintf("sys_send_ipc: failed to send ipc %d\n", r);
 			curenv->env_status = ENV_RUNNABLE;
 			return r;
 		}
+=======
+        // Failed to migrate, back to running!
+        if (r < 0) {
+                curenv->env_status = ENV_RUNNABLE;
+                return r;
+        }
+
+        // Sent IPC to server
+        return 0;
+
+local:
+	// LOCAL JOS IPC SEND
+
+	// Try mapping page from sender to receiver (if receiver wants it, 
+        // and sender wants to send it)
+	// NOTE: Can't use sys_map_page as it checks for env perms
+	if ((uint32_t) rcv->env_ipc_dstva < UTOP && (uint32_t) srcva < UTOP) {
+		if (!(pp = page_lookup(curenv->env_pgdir, srcva, &pte)))
+			return -E_INVAL;
+
+		if ((perm & PTE_W) && !(*pte & PTE_W))
+			return -E_INVAL;
+
+		if (page_insert(rcv->env_pgdir, pp, rcv->env_ipc_dstva, perm) 
+		    < 0)
+			return -E_NO_MEM;
+	}
+
+	// Set fields which mark receiver as not waiting
+	rcv->env_ipc_recving = 0;
+	rcv->env_ipc_dstva = (void *) UTOP; // invalid dstva
+
+	// Set received data fields of receiver
+	rcv->env_ipc_value = value;
+
+	// Special case if IPC from JDOSC to USER
+	if (djos_sc) {
+		rcv->env_ipc_from = *((envid_t *)(DJOSTEMP));
+>>>>>>> 89f6a7ac0a75f3a5bcb326ec156704b5edf25116
 	}
 	else {
-		// Is receiver waiting?
-		if (!rcv->env_ipc_recving) {
-			return -E_IPC_NOT_RECV;
-		}
-		
-		// Try mapping page from sender to receiver (if receiver 
-		// wants it, and sender wants to send it)
-		// NOTE: Can't use sys_map_page as it checks for env perms
-		if ((uint32_t) rcv->env_ipc_dstva < UTOP && 
-		    (uint32_t) srcva < UTOP) {
-			if (!(pp = page_lookup(curenv->env_pgdir, 
-					       srcva, &pte)))
-				return -E_INVAL;
-			
-			if ((perm & PTE_W) && !(*pte & PTE_W))
-				return -E_INVAL;
-			
-			if (page_insert(rcv->env_pgdir, pp, 
-					rcv->env_ipc_dstva, perm) < 0)
-				return -E_NO_MEM;
-		}
-		
-		// Set fields which mark receiver as not waiting
-		rcv->env_ipc_recving = 0;
-		rcv->env_ipc_dstva = (void *) UTOP; // invalid dstva
-		
-		// Set received data fields of receiver
-		rcv->env_ipc_value = value;
-		rcv->env_ipc_from = curenv->env_id;	
-		rcv->env_ipc_perm = perm;
-		
-		// Mark receiver as RUNNABLE
-		rcv->env_status = ENV_RUNNABLE;
+		rcv->env_ipc_from = curenv->env_id;
 	}
-	
+
+	rcv->env_ipc_perm = perm;
+
+	// Mark receiver as RUNNABLE
+	rcv->env_status = ENV_RUNNABLE;
+
 	return 0;
 }
 
@@ -621,9 +680,13 @@ sys_env_lease(struct Env *src, envid_t *dst_id)
 	e->env_ipc_from = src->env_ipc_from;
 	e->env_ipc_perm = src->env_ipc_perm;
 
-	e->env_hostip = src->env_hostip;
+	e->env_hostsid = src->env_hostsid;
 	e->env_alien = 1; // Mark as alien
+<<<<<<< HEAD
 	e->env_hostport = src->env_hostport;
+=======
+
+>>>>>>> 89f6a7ac0a75f3a5bcb326ec156704b5edf25116
 	e->env_hosteid = src->env_hosteid;
 
 	*dst_id = e->env_id;
@@ -691,12 +754,72 @@ sys_env_unsuspend(envid_t envid, uint32_t status, uint32_t value)
 	return 0;
 }
 
+static int
+sys_dipc_try_send(char reqno, void *srcva)
+{
+	envid_t jdos_client = 0;
+	struct Env *jc;
+	int i, r;
+	struct Page *pp;
+
+	for (i = 0; i < NENV; i++) {
+		if (envs[i].env_type == ENV_TYPE_JDOSC) {
+			jdos_client = envs[i].env_id;
+			break;
+		}
+	}
+
+	// jdos client running?
+	if (!jdos_client) return -E_BAD_ENV; 
+
+	if ((r = envid2env(jdos_client, &jc, 0)) < 0) return r;
+
+	// Is client waiting?
+	if (!jc->env_dipc_recving) {
+		return -E_IPC_NOT_RECV;
+	}
+
+	// Map page to jc IPCSND
+	if (!(pp = page_lookup(curenv->env_pgdir, srcva, NULL)))
+		return -E_INVAL;
+
+	if (page_insert(jc->env_pgdir, pp, (void *) IPCSND, PTE_P | PTE_U) 
+	    < 0)
+		return -E_NO_MEM;
+
+	// Set fields which mark client as not waiting
+	jc->env_dipc_recving = 0;
+	jc->env_dipc_reqno = reqno;
+
+	// Mark receiver as RUNNABLE
+	jc->env_status = ENV_RUNNABLE;
+
+	return 0;
+}
+
+static int
+sys_dipc_recv()
+{
+	// Set fields which mark as waiting
+	curenv->env_dipc_recving = 1;
+	curenv->env_dipc_reqno = 0;
+	
+	// Mark as NOT_RUNNABLE (waiting)
+	curenv->env_status = ENV_NOT_RUNNABLE;
+
+	return 0;
+}
+
 int // user call to lease self
 sys_migrate(void *thisenv)
 {
 	envid_t jdos_client = 0;
 	struct Env *e;
 	int i, r;
+
+	if (curenv->env_alien) {
+		return -E_BAD_ENV;
+	}
 
 	for (i = 0; i < NENV; i++) {
 		if (envs[i].env_type == ENV_TYPE_JDOSC) {
@@ -710,21 +833,28 @@ sys_migrate(void *thisenv)
 
 	if ((r = envid2env(jdos_client, &e, 0)) < 0) return r;
 
-	// Mark leased and try to migrate
+	// Mark suspended and try to migrate
 	curenv->env_status = ENV_SUSPENDED; 
-	sys_page_alloc(curenv->env_id, (void *) IPCSND, PTE_U|PTE_P|PTE_W);
-	*((envid_t *) IPCSND) = curenv->env_id;
-	*((void **)(IPCSND + sizeof(envid_t))) = thisenv;
+	r = sys_page_alloc(curenv->env_id, (void *) IPCSND, PTE_U|PTE_P|PTE_W);
 
-	//can't write to page
-	r = sys_ipc_try_send(jdos_client, CLIENT_LEASE_REQUEST, 
-			     (void *) IPCSND, PTE_U|PTE_P); 
+	if (r >= 0) { 
+		// Put data in temp page
+		*((envid_t *) IPCSND) = curenv->env_id;
+		*((void **)(IPCSND + sizeof(envid_t))) = thisenv;
 
-	sys_page_unmap(curenv->env_id, (void *) IPCSND);
+		// Try sending dipc to jc
+		r = sys_dipc_try_send(CLIENT_LEASE_REQUEST, (void *) IPCSND);
+
+		// Unmap temp page
+		sys_page_unmap(curenv->env_id, (void *) IPCSND);
+	}
 
 	// Failed to migrate, back to running!
 	if (r < 0) {
+<<<<<<< HEAD
 		cprintf("==> sys_migrate: failed to send ipc %d\n", r);
+=======
+>>>>>>> 89f6a7ac0a75f3a5bcb326ec156704b5edf25116
 		curenv->env_status = ENV_RUNNABLE;
 		return r;
 	}
@@ -740,6 +870,10 @@ sys_lease_complete()
 	struct Env *e;
 	int i, r;
 
+	if (!curenv->env_alien) {
+		return -E_BAD_ENV;
+	}
+
 	for (i = 0; i < NENV; i++) {
 		if (envs[i].env_type == ENV_TYPE_JDOSC) {
 			jdos_client = envs[i].env_id;
@@ -752,25 +886,27 @@ sys_lease_complete()
 
 	if ((r = envid2env(jdos_client, &e, 0)) < 0) return r;
 
-	// Mark suspended and send lease complete request
-	curenv->env_status = ENV_SUSPENDED; 
+	// Mark suspended and alloc temp page
+	curenv->env_status = ENV_SUSPENDED;
 	sys_page_alloc(curenv->env_id, (void *) IPCSND, PTE_U|PTE_P|PTE_W);
+
+	// Put data in it
 	*((envid_t *) IPCSND) = curenv->env_id;
 
 	// Can't write to page
-	r = sys_ipc_try_send(jdos_client, CLIENT_LEASE_COMPLETED, 
-			     (void *) IPCSND, PTE_U|PTE_P); 
+	r = sys_dipc_try_send(CLIENT_LEASE_COMPLETED, (void *) IPCSND);
 
+	// Unmap temp page
 	sys_page_unmap(curenv->env_id, (void *) IPCSND);
 
 	// Failed to migrate, back to running!
 	if (r < 0) {
-		cprintf("sys_lease_completed: failed to send ipc %d\n", r);
 		curenv->env_status = ENV_RUNNABLE;
 		return r;
 	}
 
-	return 0;	
+	// LC req sent!
+	return 0;
 }
 
 int
@@ -851,6 +987,10 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		return sys_env_unsuspend((envid_t) a1, (uint32_t) a2, (uint32_t) a3);
 	case SYS_env_set_thisenv:
 		return sys_env_set_thisenv((envid_t) a1, (void *) a2);
+	case SYS_dipc_try_send:
+		return sys_dipc_try_send((char) a1, (void *) a2);
+	case SYS_dipc_recv:
+		return sys_dipc_recv();
 	case SYS_migrate:
 		return sys_migrate((void *) a1);
 	case SYS_lease_complete:

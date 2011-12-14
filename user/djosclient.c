@@ -10,13 +10,25 @@
 #define LEASE_COMP_SZ (1 + sizeof(envid_t)) 
 #define IPC_START_SZ (1 + sizeof(struct ipc_pkt))
 
+int gsid = 0; // server id
 
 struct lease_entry {
 	envid_t env_id;
-	uint32_t lessee_ip;
+	uint32_t lessee_sid;
 };
 
 struct lease_entry lease_map[CLEASES];
+
+struct server {
+	uint32_t ip;
+	uint16_t port;
+};
+
+struct server server_map[] = { // # must match NSERVERS
+	{ 0x12bb0048, 26591 },
+//	{ 0x12bb0050, 25281 },
+	{ 0x12bb0049, 26591 },
+};
 
 static void
 die(char *m)
@@ -37,15 +49,38 @@ pg_handler(struct UTrapframe *utf)
 		panic("Allocating at %x in page fault handler: %e", addr, r);
 }
 
+int
+get_server()
+{
+	do {
+		gsid = (gsid + 1) % NSERVERS; // try next server
+	}
+	while (server_map[gsid].ip == CLIENTIP);
+
+	return gsid;
+}
+
+int
+get_my_sid()
+{
+	int i;
+	for (i = 0; i < NSERVERS; i++) {
+		if (server_map[i].ip == CLIENTIP) return i;
+	}
+	
+	die("Couldn't find self in sever_map!");
+	return -1;
+}
+
 int 
-put_lease(envid_t envid, uint32_t hostip) 
+put_lease(envid_t envid, int sid) 
 {
 	int i;
 	
 	for (i = 0; i < CLEASES; i++) {
 		if (!lease_map[i].env_id) {
 			lease_map[i].env_id = envid;
-			lease_map[i].lessee_ip = hostip;
+			lease_map[i].lessee_sid = sid;
 			return i;
 		}
 	}
@@ -61,7 +96,7 @@ delete_lease(envid_t envid)
 	for (i = 0; i < CLEASES; i++) {
 		if (lease_map[i].env_id == envid) {
 			lease_map[i].env_id = 0;
-			lease_map[i].lessee_ip = 0;
+			lease_map[i].lessee_sid = 0;
 			return i;
 		}
 	}
@@ -98,13 +133,13 @@ check_lease_complete()
 		e = (struct Env *) &envs[ENVX(lease_map[i].env_id)];
 		if (e->env_status != ENV_LEASED) {
 			lease_map[i].env_id = 0;
-			lease_map[i].lessee_ip = 0;
+			lease_map[i].lessee_sid = 0;
 		}
 	}
 }
 
 int
-connect_serv(uint32_t ip, uint32_t port)
+connect_serv(int sid)
 {
         int r;
         int clientsock;
@@ -113,15 +148,14 @@ connect_serv(uint32_t ip, uint32_t port)
         if ((clientsock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
                 die("Doomed!");
 
-	/* In this context client is actually DJOS server */
-
         memset(&client, 0, sizeof(client));             // Clear struct
         client.sin_family = AF_INET;                    // Internet/IP
-        client.sin_addr.s_addr = htonl(ip);             // client ip
-        client.sin_port = htons(port);                  // client port
+        client.sin_addr.s_addr = htonl(server_map[sid].ip); // client ip
+        client.sin_port = htons(server_map[sid].port);  // client port
 
 	if (debug) {
-		cprintf("Connecting to server at %x:%d...\n", ip, port);
+		cprintf("Connecting to server at %x:%d...\n", 
+			server_map[sid].ip, server_map[sid].port);
 	}
 
         if ((r = connect(clientsock, (struct sockaddr *) &client,
@@ -130,6 +164,11 @@ connect_serv(uint32_t ip, uint32_t port)
 		close(clientsock);
 		return -E_FAIL;
 	}
+
+        if (debug) {
+                cprintf("Connected to server at %x:%d.\n", 
+			server_map[sid].ip, server_map[sid].port);
+        }
 
 	return clientsock;
 }
@@ -153,13 +192,16 @@ issue_request(int sock, const void *req, int len)
 }
 
 int
-send_buff(const void *req, int len)
+send_buff(const void *req, int len, int sid)
 {
 	int cretry = 0;
 	int response;
-	int sock = connect_serv(SERVIP, SERVPORT);
+
+	int sock = connect_serv(sid);
 	if (sock < 0) return -E_FAIL;
+
 	char buffer[BUFFSIZE];
+<<<<<<< HEAD
 	while (cretry < RETRIES) {
 		if (issue_request(sock, req, len) >= 0) {
 			break;
@@ -168,14 +210,24 @@ send_buff(const void *req, int len)
 		sock = connect_serv(SERVIP, SERVPORT);
 		cretry++;
 	}
+=======
+
+	if (debug) {
+		cprintf("Client sending request type: %d\n", *((char *) req));
+	}
+
+	issue_request(sock, req, len);
+>>>>>>> 89f6a7ac0a75f3a5bcb326ec156704b5edf25116
 
 	if (debug) {
 		cprintf("Waiting for response from server...\n");   
 	}
 
 	// Receive message
-	if (read(sock, buffer, BUFFSIZE) < 0)
+	if (read(sock, buffer, BUFFSIZE) < 0) {
 		panic("Failed to read");
+	}
+
 	close(sock);
 	       
 	if (debug) {
@@ -186,7 +238,7 @@ send_buff(const void *req, int len)
 }
 
 int
-send_lease_req(envid_t envid, void *thisenv, struct Env *env)
+send_lease_req(envid_t envid, void *thisenv, struct Env *env, int sid)
 {
 	char buffer[LEASE_REQ_SZ];
 	int r;
@@ -203,24 +255,21 @@ send_lease_req(envid_t envid, void *thisenv, struct Env *env)
 	*((void **)(buffer + 1 + sizeof(struct Env) + sizeof(envid_t)))
 		= thisenv;
 
-	e->env_hostip = CLIENTIP;
-	e->env_hostport = CLIENTPORT;
-
 	if (debug){
 		cprintf("Sending struct Env: \n"
 			"  env_id: %x\n"
 			"  env_parent_id: %x\n"
 			"  env_status: %x\n"
-			"  env_hostip: %x\n",
+			"  env_hostsid: %x\n",
 			e->env_id, e->env_parent_id,
-			e->env_status, e->env_hostip);
+			e->env_status, e->env_hostsid);
 	}
 	
-	return send_buff(buffer, LEASE_REQ_SZ);
+	return send_buff(buffer, LEASE_REQ_SZ, sid);
 }
 
 int
-send_page_req(envid_t envid, uintptr_t va, int perm)
+send_page_req(envid_t envid, uintptr_t va, int perm, int sid)
 {
 	int r, i, offset;
 	char buffer[PAGE_REQ_SZ];
@@ -257,7 +306,7 @@ send_page_req(envid_t envid, uintptr_t va, int perm)
 				 (buffer + 1 + offset), perm, 0);
 		if (r < 0) return r;
 
-		r = send_buff(buffer, PAGE_REQ_SZ);
+		r = send_buff(buffer, PAGE_REQ_SZ, sid);
 		if (r < 0) return r;
 	}
 
@@ -265,7 +314,7 @@ send_page_req(envid_t envid, uintptr_t va, int perm)
 }
 
 int
-send_pages(envid_t envid)
+send_pages(envid_t envid, int sid)
 {
 	uintptr_t addr;
 	int r, perm;
@@ -275,7 +324,7 @@ send_pages(envid_t envid)
 			continue;
 		};
 
-		r = send_page_req(envid, addr, perm);
+		r = send_page_req(envid, addr, perm, sid);
 		if (r < 0) return r;
 	}
 
@@ -283,7 +332,7 @@ send_pages(envid_t envid)
 }
 
 int
-send_done_request(envid_t envid, uint8_t code)
+send_done_request(envid_t envid, uint8_t code, int sid)
 {
 	char buffer[DONE_REQ_SZ];
 	
@@ -299,49 +348,55 @@ send_done_request(envid_t envid, uint8_t code)
 correct_code:
 	buffer[0] = code;
 	*((envid_t *) (buffer + 1)) = envid;
-	return send_buff(buffer, DONE_REQ_SZ);
+	return send_buff(buffer, DONE_REQ_SZ, sid);
 }
 
 int
-send_abort_request(envid_t envid) 
+send_abort_request(envid_t envid, int sid) 
 {
 	char buffer[ABORT_REQ_SZ];
 
 	buffer[0] = ABORT_LEASE;
 	*((envid_t *) (buffer + 1)) = envid;
-	return send_buff(buffer, ABORT_REQ_SZ);
+	return send_buff(buffer, ABORT_REQ_SZ, sid);
 }
 
 int
-send_env(struct Env *env, void *thisenv)
+send_env(struct Env *env, void *thisenv, int sid)
 {
 	int r, cretry = 0;
 	uintptr_t addr;
 	
-	while (cretry <= RETRIES) {
+	while (cretry < RETRIES) {
 		cretry++;
 
-		r = send_lease_req(env->env_id, thisenv, env);
+		r = send_lease_req(env->env_id, thisenv, env, sid);
 		if (r == -E_FAIL || r == -E_NO_LEASE) continue;
 		if (r < 0) goto error;
 		
-		r = send_pages(env->env_id);
-		if (r == -E_NO_MEM) return -E_FAIL;
+		if (debug) {
+			cprintf("Leased request sent for %x.\n", env->env_id);
+		}
+
+		r = send_pages(env->env_id, sid);
 		if (r == -E_FAIL) continue;
+		if (r == -E_NO_MEM) goto error;
 
 		if (r < 0) goto error;
 
-		r = send_done_request(env->env_id, DONE_LEASE);
+		r = send_done_request(env->env_id, DONE_LEASE, sid);
+		if (r == -E_BAD_REQ) continue;
 		if (r < 0) goto error;
 
 		break;
 	error:
-		send_abort_request(env->env_id);
+		send_abort_request(env->env_id, sid);
 	}
 
-	if (cretry > (RETRIES + 1)) {
+	if (cretry >= RETRIES) {
 		return -E_FAIL;
 	}
+
 	return 0;
 }
 
@@ -349,9 +404,7 @@ void
 try_send_lease(envid_t envid, void *thisenv)
 {
 	struct Env e;
-	int r;
-
-	cprintf("Sending lease request for process %08x\n", envid);
+	int r, sid;
 
 	// Get envid from ipc *value*
 	memmove((void *) &e, (void *) &envs[ENVX(envid)], 
@@ -359,7 +412,11 @@ try_send_lease(envid_t envid, void *thisenv)
 
 	// Ids must match
 	if (e.env_id != envid) {
+<<<<<<< HEAD
 		cprintf("Env id mismatch!\n");
+=======
+		cprintf("Env id mismatch in lease! %x, %x\n", e.env_id, envid);
+>>>>>>> 89f6a7ac0a75f3a5bcb326ec156704b5edf25116
 		return;
 	}
 
@@ -372,13 +429,17 @@ try_send_lease(envid_t envid, void *thisenv)
 	else {
 		// Set eax to 0, to appear migrate call succeed
 		e.env_tf.tf_regs.reg_eax = 0;
-		e.env_hostip = CLIENTIP; // Set my client ip
-		e.env_hostport = 0x7;
 			
+		// Find server to send
+		sid = get_server();
+
 		// Put in lease_map
-		if ((r = put_lease(envid, SERVIP)) >= 0) {
+		if ((r = put_lease(envid, sid)) >= 0) {
+			// Set own ip ports
+			e.env_hostsid = get_my_sid();
+
 			// Try sending env
-			r = send_env(&e, thisenv);
+			r = send_env(&e, thisenv, sid);
 		}
 	}
 
@@ -386,7 +447,7 @@ try_send_lease(envid_t envid, void *thisenv)
 	// And mark ENV_RUNNABLE
 	if (r < 0) {
 		cprintf("Lease to server failed! Aborting...\n");
-		sys_env_unsuspend(envid, ENV_RUNNABLE, -E_INVAL);
+		sys_env_unsuspend(envid, ENV_RUNNABLE, r);
 		delete_lease(envid);
 	}
 	else {
@@ -399,21 +460,21 @@ try_send_lease(envid_t envid, void *thisenv)
 void
 try_send_lease_completed(envid_t envid)
 {
-	struct Env e;
+	struct Env *e;
 	int r, i, ctries = 0;
 	char buffer[LEASE_COMP_SZ];
 	
-	memmove((void *) &e, (void *) &envs[ENVX(envid)], 
-		sizeof(struct Env));
+	e = (struct Env *) &envs[ENVX(envid)];
 
 	// Ids must match
-	if (e.env_id != envid) {
-		cprintf("Env id mismatch!");
-		return; // That env doesn't exist
+	if (e->env_id != envid) {
+		cprintf("Env id mismatch in completed %x, %x!\n",
+			e->env_id, envid);
+		return;
 	}
 
-	// Status must be ENV_LEASED
-	if (e.env_status != ENV_SUSPENDED) {
+	// Status must be ENV_SUSPENDED
+	if (e->env_status != ENV_SUSPENDED) {
 		cprintf("Failed to lease complete envid %x. Not suspended!\n", 
 			envid);
 		r = -E_FAIL;
@@ -421,19 +482,19 @@ try_send_lease_completed(envid_t envid)
 	}
 
 	cprintf("Finished executing process %08x->%08x.\n", 
-		e.env_id, e.env_hosteid);
+		e->env_id, e->env_hosteid);
 
-	while (ctries <= RETRIES) {
+	while (ctries < RETRIES) {
+		ctries++;
+
 		buffer[0] = COMPLETED_LEASE;
-		*((envid_t *) (buffer + 1)) = e.env_hosteid;
-		r = send_buff(buffer, LEASE_COMP_SZ);
+		*((envid_t *) (buffer + 1)) = e->env_hosteid;
+		r = send_buff(buffer, LEASE_COMP_SZ, e->env_hostsid);
 
 		if (!r || r == -E_BAD_REQ) break;
-
-		ctries++;
 	}
 
-	if (ctries > RETRIES) {
+	if (ctries >= RETRIES) {
 		r = -E_FAIL;
 		goto end;
 	}
@@ -441,7 +502,7 @@ try_send_lease_completed(envid_t envid)
 end:
 	if (r < 0) {
 		cprintf("Complete lease to server failed! Aborting...\n");
-		sys_env_unsuspend(envid, ENV_RUNNABLE, -E_INVAL);
+		sys_env_unsuspend(envid, ENV_RUNNABLE, r);
 	}
 	else {
 		// Do what?
@@ -450,7 +511,7 @@ end:
 }
 
 int
-send_ipc_start(struct ipc_pkt *packet)
+send_ipc_start(struct ipc_pkt *packet, int sid)
 {
 	char buffer[IPC_START_SZ];
 	int r;
@@ -466,24 +527,31 @@ send_ipc_start(struct ipc_pkt *packet)
 		cprintf("Sending IPC Start: \n"
 			"  src_id: %x\n"
 			"  dst_id: %x\n"
+<<<<<<< HEAD
 			"  val: %d\n",
 			"  fromalien: %d\n",
 			packet->pkt_src, packet->pkt_dst, packet->pkt_val,
 			packet->pkt_fromalien);
+=======
+			"  val: %d\n"
+			"  toalien?: %d\n",
+			packet->pkt_src, packet->pkt_dst, packet->pkt_val,
+			packet->pkt_toalien);
+>>>>>>> 89f6a7ac0a75f3a5bcb326ec156704b5edf25116
 	}
 	
-	return send_buff(buffer, IPC_START_SZ);
+	return send_buff(buffer, IPC_START_SZ, sid);
 }
 
 int
-send_ipc_req(struct ipc_pkt *packet, uint32_t ip)
+send_ipc_req(struct ipc_pkt *packet, int sid)
 {
 	int r, cretry = 0;
 	
 	while (cretry <= RETRIES) {
 		cretry++;
 
-		r = send_ipc_start(packet);
+		r = send_ipc_start(packet, sid);
 
 		switch (r) {
 		case -E_NO_IPC:
@@ -497,16 +565,6 @@ send_ipc_req(struct ipc_pkt *packet, uint32_t ip)
 		default:
 			continue;
 		}
-
-/*		if (r < 0) goto error;
-		
-		r = send_done_request(packet->pkt_src, DONE_IPC);
-		if (r < 0) goto error;
-
-		break;
-	error:
-		send_abort_request(packet->pkt_src);
-*/
 	}
 
 	if (cretry > (RETRIES + 1)) return -E_INVAL;
@@ -514,8 +572,9 @@ send_ipc_req(struct ipc_pkt *packet, uint32_t ip)
 	return 0;
 }
 void
-try_send_ipc(envid_t src_id, uintptr_t va, int perm)
+try_send_ipc(uintptr_t va)
 {
+<<<<<<< HEAD
 	struct Env e, s;
 	uint32_t ip = 0;
 	int r;
@@ -560,36 +619,99 @@ try_send_ipc(envid_t src_id, uintptr_t va, int perm)
                 // Put in lease_map
 		if ((r = find_lease(packet.pkt_dst) >= 0)) {
 			ip = lease_map[r].lessee_ip;
-		}
-		else {
+=======
+	struct Env *d, *s;
+	int sid;
+	int r;
+	struct ipc_pkt packet;
+	bool snd_alien;
+
+	packet.pkt_src = *((envid_t *) va);
+	packet.pkt_dst = *((envid_t *) (va + sizeof(envid_t)));
+	packet.pkt_val = *((uint32_t *) (va + 2*sizeof(envid_t)));
+	packet.pkt_va = *((uintptr_t *) (va + 2*sizeof(envid_t) + 
+				     sizeof(uint32_t)));
+	packet.pkt_perm = *((unsigned *) (va + 2*sizeof(envid_t) + 
+					  sizeof(uint32_t) + 
+					  sizeof (void *)));
+	packet.pkt_toalien = *((bool *) (va + 2*sizeof(envid_t) +
+					 sizeof(uint32_t) +
+					 sizeof (void *) + 
+					 sizeof(unsigned)));
+
+	// Don't allow sending pages right now!
+	packet.pkt_va = UTOP;
+
+	// Get envid from ipc *value*, check env exists
+	s = (struct Env *) &envs[ENVX(packet.pkt_src)];
+	d = (struct Env *) &envs[ENVX(packet.pkt_dst)];
+
+	// Sending from native machine to leased env
+	if (packet.pkt_toalien) {
+		// Ids must match
+		if (d->env_id != packet.pkt_dst) {
+			cprintf("Env id mismatch in ipc %x, %x!\n",
+				d->env_id, packet.pkt_dst);
 			r = -E_BAD_ENV;
-			goto ipc_end;
+			goto ipc_done;
 		}
+
+		// Status must be ENV_LEASED
+		if (d->env_status != ENV_LEASED) {
+			cprintf("Sending IPC via DJOS to unleased process!\n", 
+				d->env_id);
+			r = -E_BAD_ENV;
+			goto ipc_done;
+>>>>>>> 89f6a7ac0a75f3a5bcb326ec156704b5edf25116
+		}
+
+		// Check in lease_map
+		if ((r = find_lease(packet.pkt_dst) < 0)) {
+			cprintf("Sending IPC to DJOS to env not in map\n");
+			r = -E_BAD_ENV;
+<<<<<<< HEAD
+			goto ipc_end;
+=======
+			goto ipc_done;
+>>>>>>> 89f6a7ac0a75f3a5bcb326ec156704b5edf25116
+		}
+
+		sid = lease_map[r].lessee_sid;
+	}
+	// Sending from alien machine to host machine
+	else {
+		packet.pkt_src = s->env_hosteid;
+		sid = s->env_hostsid;
 	}
 
+	r = send_ipc_req(&packet, sid);
+
+<<<<<<< HEAD
 	// Try sending env
 	r = send_ipc_req(&packet, ip);
 
 	ipc_end:
+=======
+ipc_done:
+>>>>>>> 89f6a7ac0a75f3a5bcb326ec156704b5edf25116
 	// If ipc failed, then set eax to r to indicate failure
 	// And mark ENV_RUNNABLE
 	if (r < 0) {
-		cprintf("IPC to server failed! Aborting...\n");
-		sys_env_unsuspend(src_id, ENV_RUNNABLE, r);
+		if (r != -E_IPC_NOT_RECV) {
+			cprintf("IPC to server failed! Aborting...\n");
+		}
+		sys_env_unsuspend(s->env_id, ENV_RUNNABLE, r);
 	}
 	else {
 		// Mark success and run again
-		sys_env_unsuspend(src_id, ENV_RUNNABLE, 0);
+		sys_env_unsuspend(s->env_id, ENV_RUNNABLE, 0);
 	}
 }
 
 void
 process_request()
 {
-	int icode, perm;
-	envid_t sender;
-
-	icode = ipc_recv(&sender, (void *) IPCRCV, &perm);
+	char icode = dipc_recv();
 
 	switch(icode)
 	{
@@ -601,7 +723,7 @@ process_request()
 		try_send_lease_completed(*((envid_t *) IPCRCV));
 		return;
 	case CLIENT_SEND_IPC:
-		try_send_ipc(sender, (uintptr_t) IPCRCV, perm);
+		try_send_ipc((uintptr_t) IPCRCV);
 		return;
 	default:
 		return;

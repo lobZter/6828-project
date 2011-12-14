@@ -156,9 +156,14 @@ process_start_lease(char *buffer)
 			"  env_id: %x\n"
 			"  env_parent_id: %x\n"
 			"  env_status: %x\n"
-			"  env_hostip: %x\n",
+			"  env_hostsid: %x\n",
 			req_env.env_id, req_env.env_parent_id,
-			req_env.env_status, req_env.env_hostip);
+			req_env.env_status, req_env.env_hostsid);
+	}
+
+	// Check if an entry is already in leasemap
+	if (find_lease(src_id) >= 0) {
+		return -E_BAD_REQ;
 	}
 
 	// Env must have status = ENV_SUSPENDED
@@ -268,7 +273,7 @@ process_done_lease(char *buffer)
 
 	// Check lease map
 	if ((i = find_lease(src_id)) < 0) {
-		return -E_FAIL;
+		return -E_BAD_REQ;
 	}
 
 	if (!lease_map[i].dst) return -E_FAIL;
@@ -292,6 +297,7 @@ process_abort_lease(char *buffer)
 {
 	int i;
 	envid_t src_id;
+	struct Env *e;
 
 	// Destroy lease
 	src_id = *((envid_t *) buffer);
@@ -302,9 +308,16 @@ process_abort_lease(char *buffer)
 			src_id);
 	}
 
-	destroy_lease(src_id);
 	if ((i = find_lease(src_id)) >= 0) {
+		e = (struct Env *) &envs[ENVX(lease_map[i].dst)];
+
+		// Already started process, can't abort
+		if (e->env_status == ENV_RUNNABLE) {
+			return -E_FAIL;
+		}
+
 		sys_env_destroy(lease_map[i].dst);
+		destroy_lease(src_id);
 	}
 
 	return 0;
@@ -318,6 +331,7 @@ process_ipc_start(char *buffer)
 
 	struct ipc_pkt packet = *((struct ipc_pkt *) buffer);
 
+<<<<<<< HEAD
 	if (!packet.pkt_fromalien) {
 		if ((r = find_lease(packet.pkt_dst)) < 0) {
 			return -E_FAIL;
@@ -328,20 +342,41 @@ process_ipc_start(char *buffer)
 		dst = packet.pkt_dst;
 	}
 
+=======
+>>>>>>> 89f6a7ac0a75f3a5bcb326ec156704b5edf25116
 	if (debug) {
 		cprintf("New IPC packet: \n"
 			"  src_id: %x\n"
 			"  dst_id: %x\n"
+<<<<<<< HEAD
 			"  local dst: %x\n"
 			"  val: %d\n"
 			"  fromalien: %d\n",
 			packet.pkt_src, packet.pkt_dst, dst, packet.pkt_val,
 			packet.pkt_fromalien);
+=======
+			"  to alien?: %x\n"
+			"  val: %d\n",
+			packet.pkt_src, packet.pkt_dst, packet.pkt_toalien, 
+			packet.pkt_val);
+>>>>>>> 89f6a7ac0a75f3a5bcb326ec156704b5edf25116
 	}
-	
-	if (!packet.pkt_va) {
-		packet.pkt_va = UTOP;
+
+	// IPC to an alien env
+	if (packet.pkt_toalien) {
+		if ((r = find_lease(packet.pkt_dst)) < 0) {
+			return -E_FAIL;
+		}		
+
+		dst = lease_map[r].dst;
 	}
+	// IPC to a local env
+	else {
+		dst = packet.pkt_dst;
+	}
+
+	// FIX syscall api to ensure ipc souce reflected as packet.pkt_src
+	*((envid_t *) DJOSTEMP) = packet.pkt_src;
 
 	r = sys_ipc_try_send(dst, packet.pkt_val, (void *) packet.pkt_va, 
 			     packet.pkt_perm);
@@ -379,7 +414,10 @@ process_completed_lease(char *buffer)
 
 	if (e->env_status == ENV_LEASED) {
 		i = sys_env_destroy(envid);
-		if (i < 0) return -E_BAD_REQ;
+		if (i < 0) return -E_FAIL;
+	}
+	else {
+		return -E_BAD_REQ;
 	}
 
 	return 0;
@@ -396,7 +434,8 @@ process_request(char *buffer)
 	buffer += 1;
 
 	if (debug) {
-		cprintf("Processing request type: %d\n", (int) req_type);
+		cprintf("Sevrer processing request type: %d\n", 
+			(int) req_type);
 	}
 
 	switch((int)req_type) {
@@ -408,10 +447,10 @@ process_request(char *buffer)
 		return process_done_lease(buffer);
 	case ABORT_LEASE:
 		return process_abort_lease(buffer);
-	case START_IPC:
-		return process_ipc_start(buffer);
 	case COMPLETED_LEASE:
 		return process_completed_lease(buffer);
+	case START_IPC:
+		return process_ipc_start(buffer);
 	default:
 		return -E_BAD_REQ;
 	}
@@ -516,6 +555,12 @@ umain(int argc, char **argv)
 
 	cprintf("Binding DJOS Receive Socket\n");
 
+	// Map temp page for IPC hack
+	if (sys_page_alloc(thisenv->env_id, (void *) DJOSTEMP, 
+			   PTE_U | PTE_P | PTE_W) < 0) {
+		die("Failed to allocate temp page for DJOS serv");
+	}
+
 	// Bind the server socket
 	if (bind(serversock, (struct sockaddr *) &echoserver,
 		 sizeof(echoserver)) < 0) {
@@ -555,6 +600,7 @@ umain(int argc, char **argv)
 		if (debug) {
 			cprintf("Client connected: Handling...\n");
 		}
+
 		handle_client(clientsock);
 	}
 

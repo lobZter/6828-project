@@ -26,6 +26,8 @@ enum {
 	SYS_copy_mem,
 	SYS_get_perms,
 	SYS_env_unsuspend,
+	SYS_dipc_try_send,
+	SYS_dipc_recv,
 	SYS_migrate,
 	SYS_lease_complete,
 	SYS_env_set_thisenv,
