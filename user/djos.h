@@ -20,7 +20,7 @@
 #define IPCRCV (UTEMP + PGSIZE) // page to map ipc rcv
 #define IPCSND (UTEMP + PGSIZE) // page to map ipc rcv
 #define DJOSTEMP (UTEMP + 2*PGSIZE) // temp page
-#define NSERVERS 2
+#define NSERVERS 3
 
 /* Protocol message types */
 #define PAGE_REQ 0
