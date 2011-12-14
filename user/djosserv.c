@@ -445,7 +445,7 @@ process_ipc_done(char *buffer)
 	d = (struct Env *) &envs[ENVX(dst)];
 
 	// Check ipc_from field
-	if (d->env_ipc_from != packet.pkt_src)
+	if (d->env_ipc_from != packet.pkt_src) {
 		return -E_BAD_REQ;
 	}
 
