@@ -16,7 +16,8 @@
 #include <user/djos.h>
 
 static int sys_dipc_try_send(char reqno, void *srcva);
-
+int sys_copy_mem(envid_t env_id, void* addr, void* buf, int perm, 
+		 bool frombuf);
 
 // Print a string to the system console.
 // The string is exactly 'len' characters long.
@@ -443,12 +444,7 @@ djos:
         sys_page_alloc(curenv->env_id, (void *) IPCSND, PTE_U|PTE_P|PTE_W);
 
         // Put data in temp page
-	//if (curenv->env_type == ENV_TYPE_JDOSS) {
-	//*((envid_t *) IPCSND) = *((envid_t *)(DJOSTEMP)); // sender
-		//}
-//else {
-		*((envid_t *) IPCSND) = curenv->env_id; // sender
-		//}
+	*((envid_t *) IPCSND) = curenv->env_id; // sender
         *((envid_t *)(IPCSND + sizeof(envid_t))) = envid; // receiver
 	*((uint32_t *)(IPCSND + 2*sizeof(envid_t))) = value;
 	*((void **) (IPCSND + 2*sizeof(envid_t) + sizeof(uint32_t)))
@@ -500,7 +496,18 @@ local:
 
 	// Special case if IPC from JDOSC to USER
 	if (djos_sc) {
-		rcv->env_ipc_from = *((envid_t *)(DJOSTEMP));
+		rcv->env_ipc_from = *((envid_t *)DJOSTEMP);
+
+		struct Env *snd;
+		snd = &envs[ENVX(rcv->env_ipc_from)];
+		if (snd->env_status == ENV_LEASED && 
+		    rcv->env_ipc_dstva) {
+			sys_page_alloc(rcv->env_id, rcv->env_ipc_dstva, 
+				       PTE_U|PTE_P|PTE_W);
+			sys_copy_mem(rcv->env_id, rcv->env_ipc_dstva, 
+				     (void*)(DJOSTEMP + sizeof(envid_t)),
+				     PTE_U|PTE_P|PTE_W, 1);
+		}	
 	}
 	else {
 		rcv->env_ipc_from = curenv->env_id;
