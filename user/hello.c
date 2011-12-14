@@ -20,7 +20,6 @@ umain(int argc, char **argv)
 		thisenv->env_id);
 		val = 0x100;
 		ipc_send(id, 0x100, NULL, 0);
-		cprintf("===> Got %x from %x.\n", 0x100, 
-			thisenv->env_ipc_from);		
+		cprintf("===> Sent %x to %x.\n", 0x100, id);		
 	}
 }
