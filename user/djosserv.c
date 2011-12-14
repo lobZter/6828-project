@@ -417,13 +417,11 @@ process_ipc_done(char *buffer)
 
 	// Check ipc_from field
 	if (d->env_ipc_from != packet.pkt_src) {
-		cprintf("BOOM %x, %x\n", d->env_ipc_from, packet.pkt_src);
 		return -E_BAD_REQ;
 	}
 
 	// Rcv should not be receiving
 	if (d->env_ipc_recving) {
-		cprintf("BANG!\n");
 		return -E_BAD_REQ;
 	}
 
@@ -499,6 +497,8 @@ process_request(char *buffer)
 		return process_completed_lease(buffer);
 	case START_IPC:
 		return process_ipc_start(buffer);
+	case DONE_IPC:
+		return process_ipc_done(buffer);
 	default:
 		return -E_BAD_REQ;
 	}
