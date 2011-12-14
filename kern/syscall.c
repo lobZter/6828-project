@@ -678,6 +678,7 @@ sys_copy_mem(envid_t env_id, void* addr, void* buf, int perm, bool frombuf)
 		memmove((void *) (UTEMP + PGOFF(addr)), buf, 1024);
 	}
 	else {
+		cprintf("BOOM\n");
 		memmove(buf, (void *) (UTEMP + PGOFF(addr)), 1024);
 	}
 
