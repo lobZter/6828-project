@@ -479,7 +479,6 @@ try_send_lease_completed(envid_t envid)
 	}
 
 end:
-	cprintf("r is %d\n", r);
 	if (r < 0) {
 		cprintf("Complete lease to server failed! Aborting...\n");
 		sys_env_unsuspend(envid, ENV_RUNNABLE, r);
