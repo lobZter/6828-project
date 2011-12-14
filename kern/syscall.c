@@ -860,6 +860,8 @@ sys_lease_complete()
 		return r;
 	}
 
+	cprintf("sys_lease_complete by %x\n", curenv->env_id);
+
 	// LC req sent!
 	return 0;
 }
