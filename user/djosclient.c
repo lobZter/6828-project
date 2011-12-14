@@ -9,6 +9,7 @@
 #define ABORT_REQ_SZ (1 + sizeof(envid_t))
 #define LEASE_COMP_SZ (1 + sizeof(envid_t)) 
 #define IPC_START_SZ (1 + sizeof(struct ipc_pkt))
+#define IPC_DONE_SZ (1 + sizeof(struct ipc_pkt))
 
 int gsid = 0; // server id
 
@@ -507,7 +508,7 @@ send_ipc_start(struct ipc_pkt *packet, int sid)
 		(void *) packet, sizeof(struct ipc_pkt));
 
 	if (debug){
-		cprintf("Sending IPC Start: \n"
+		cprintf("Sending IPC start: \n"
 			"  src_id: %x\n"
 			"  dst_id: %x\n"
 			"  val: %d\n"
@@ -520,13 +521,41 @@ send_ipc_start(struct ipc_pkt *packet, int sid)
 }
 
 int
+send_ipc_done(struct ipc_pkt *packet, int sid)
+{
+	char buffer[IPC_DONE_SZ];
+	int r;
+
+	// Clear buffer
+	memset(buffer, 0, sizeof(struct ipc_pkt) + 1);
+	
+	*((char *) buffer) = DONE_IPC;
+	memmove((void *) (buffer + 1), 
+		(void *) packet, sizeof(struct ipc_pkt));
+
+	if (debug){
+		cprintf("Sending IPC done: \n"
+			"  src_id: %x\n"
+			"  dst_id: %x\n"
+			"  val: %d\n"
+			"  toalien?: %d\n",
+			packet->pkt_src, packet->pkt_dst, packet->pkt_val,
+			packet->pkt_toalien);
+	}
+	
+	return send_buff(buffer, IPC_DONE_SZ, sid);
+}
+
+
+int
 send_ipc_req(struct ipc_pkt *packet, int sid)
 {
 	int r, cretry = 0;
 	
-	while (cretry <= RETRIES) {
+	while (cretry < RETRIES) {
 		cretry++;
 
+		// Start ipc
 		r = send_ipc_start(packet, sid);
 
 		switch (r) {
@@ -536,6 +565,19 @@ send_ipc_req(struct ipc_pkt *packet, int sid)
 			return -E_INVAL;
 		case -E_FAIL:
 			return -E_BAD_ENV;
+		}
+
+		if (r < 0) continue;
+
+		// Send page
+
+		// Send done ipc
+		r = send_ipc_done(packet, sid);
+		switch (r) {
+		case -E_FAIL:
+			return -E_BAD_ENV;
+		case -E_BAD_REQ:
+			return -E_INVAL;
 		case 0:
 			return 0;
 		default:
@@ -543,7 +585,7 @@ send_ipc_req(struct ipc_pkt *packet, int sid)
 		}
 	}
 
-	if (cretry > (RETRIES + 1)) return -E_INVAL;
+	if (cretry > RETRIES) return -E_INVAL;
 
 	return 0;
 }

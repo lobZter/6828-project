@@ -341,7 +341,7 @@ process_ipc_start(char *buffer)
 	struct ipc_pkt packet = *((struct ipc_pkt *) buffer);
 
 	if (debug) {
-		cprintf("New IPC packet: \n"
+		cprintf("New Start IPC packet: \n"
 			"  src_id: %x\n"
 			"  dst_id: %x\n"
 			"  to alien?: %x\n"
@@ -380,6 +380,64 @@ process_ipc_start(char *buffer)
 
 	return r;
 }
+
+int
+process_ipc_done(char *buffer) 
+{
+	envid_t dst;
+	struct Env *d;
+	int r;
+
+	struct ipc_pkt packet = *((struct ipc_pkt *) buffer);
+
+	if (debug) {
+		cprintf("New Done IPC packet: \n"
+			"  src_id: %x\n"
+			"  dst_id: %x\n"
+			"  to alien?: %x\n"
+			"  val: %d\n",
+			packet.pkt_src, packet.pkt_dst, packet.pkt_toalien, 
+			packet.pkt_val);
+	}
+
+	// IPC to an alien env
+	if (packet.pkt_toalien) {
+		if ((r = find_lease(packet.pkt_dst)) < 0) {
+			return -E_FAIL;
+		}		
+
+		dst = lease_map[r].dst;
+	}
+	// IPC to a local env
+	else {
+		dst = packet.pkt_dst;
+	}
+
+	d = (struct Env *) &envs[ENVX(dst)];
+
+	// Check ipc_from field
+	if (d->env_ipc_from != packet.pkt_src) {
+		return -E_BAD_REQ;
+	}
+
+	// Rcv should not be receiving
+	if (d->env_ipc_recving) {
+		return -E_BAD_REQ;
+	}
+
+	// IPC is complete, mark as runnable
+	r = sys_env_set_status(dst, ENV_RUNNABLE);
+
+	switch (r) {
+	case -E_INVAL:
+		return -E_BAD_REQ;
+	case -E_BAD_ENV:
+		return -E_FAIL;
+	}
+
+	return r;
+}
+
 int
 process_completed_lease(char *buffer)
 {

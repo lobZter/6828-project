@@ -7,15 +7,20 @@ umain(int argc, char **argv)
 	
 	id = fork();
 
-	if (id) {
+	if (!id) {
 		while (sys_migrate(&thisenv) < 0);
-		id = fork();
-		
-		if (!id) {
-			while (sys_migrate(&thisenv) < 0);
-		}
-	}
+		cprintf("===> Hello World! I am child environment %x.\n", 
+			thisenv->env_id);
 
-	cprintf("===> Hello World! I am environment %x, with hosteid %x.\n",
-		thisenv->env_id, thisenv->env_hosteid);
+		val = ipc_recv(NULL, NULL, NULL);
+		cprintf("===> Got %x from %x.\n", val, thisenv->env_ipc_from);
+	}
+	else {
+		cprintf("===> Hello World! I am parent environment %x.\n", 
+		thisenv->env_id);
+		val = 0x100;
+		ipc_send(id, 0x100, NULL, 0);
+		cprintf("===> Got %x from %x.\n", 0x100, 
+			thisenv->env_ipc_from);		
+	}
 }
