@@ -332,7 +332,7 @@ process_ipc_start(char *buffer)
 
 	struct ipc_pkt packet = *((struct ipc_pkt *) buffer);
 
-	if (debug) {
+/*	if (debug) {
 		cprintf("New IPC packet: \n"
 			"  src_id: %x\n"
 			"  dst_id: %x\n"
@@ -341,7 +341,7 @@ process_ipc_start(char *buffer)
 			packet.pkt_src, packet.pkt_dst, packet.pkt_toalien, 
 			packet.pkt_val);
 	}
-
+*/
 	// IPC to an alien env
 	if (packet.pkt_toalien) {
 		if ((r = find_lease(packet.pkt_dst)) < 0) {
@@ -361,14 +361,14 @@ process_ipc_start(char *buffer)
 	r = sys_ipc_try_send(dst, packet.pkt_val, (void *) packet.pkt_va, 
 			     packet.pkt_perm);
 
-	if (!r) {
+/*	if (!r) {
 		d = (struct Env *) &envs[ENVX(dst)];
 		if (d->env_status == ENV_RUNNABLE) {
 			cprintf("try send pass to %x, unsuspend\n", dst);
 			sys_env_unsuspend(dst, ENV_RUNNABLE, 0);
 		}
 	}
-
+*/
 	switch (r) {
 	case -E_IPC_NOT_RECV:
 		return -E_NO_IPC;
