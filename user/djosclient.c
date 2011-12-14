@@ -54,7 +54,7 @@ get_server()
 	do {
 		gsid = (gsid + 1) % NSERVERS; // try next server
 	}
-	while (server_map[gsid].ip != CLIENTIP);
+	while (server_map[gsid].ip == CLIENTIP);
 
 	return gsid;
 }
