@@ -824,7 +824,7 @@ sys_lease_complete()
 	envid_t jdos_client = 0;
 	struct Env *e;
 	int i, r;
-	cprintf("1sys_lease_complete by %x\n", curenv->env_id);
+
 	if (!curenv->env_alien) {
 		return -E_BAD_ENV;
 	}
@@ -844,13 +844,13 @@ sys_lease_complete()
 	// Mark suspended and alloc temp page
 	curenv->env_status = ENV_SUSPENDED;
 	sys_page_alloc(curenv->env_id, (void *) IPCSND, PTE_U|PTE_P|PTE_W);
-	cprintf("2sys_lease_complete by %x\n", curenv->env_id);
+
 	// Put data in it
 	*((envid_t *) IPCSND) = curenv->env_id;
 
 	// Can't write to page
 	r = sys_dipc_try_send(CLIENT_LEASE_COMPLETED, (void *) IPCSND);
-	cprintf("3sys_lease_complete by %x\n", curenv->env_id);
+
 	// Unmap temp page
 	sys_page_unmap(curenv->env_id, (void *) IPCSND);
 
@@ -860,8 +860,6 @@ sys_lease_complete()
 		curenv->env_status = ENV_RUNNABLE;
 		return r;
 	}
-
-	cprintf("9sys_lease_complete by %x\n", curenv->env_id);
 
 	// LC req sent!
 	return 0;
