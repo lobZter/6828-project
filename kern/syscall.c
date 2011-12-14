@@ -443,12 +443,12 @@ djos:
         sys_page_alloc(curenv->env_id, (void *) IPCSND, PTE_U|PTE_P|PTE_W);
 
         // Put data in temp page
-	if (curenv->env_type == ENV_TYPE_JDOSS) {
-		*((envid_t *) IPCSND) = *((envid_t *)(DJOSTEMP)); // sender
-	}
-	else {
+	//if (curenv->env_type == ENV_TYPE_JDOSS) {
+	//*((envid_t *) IPCSND) = *((envid_t *)(DJOSTEMP)); // sender
+		//}
+//else {
 		*((envid_t *) IPCSND) = curenv->env_id; // sender
-	}
+		//}
         *((envid_t *)(IPCSND + sizeof(envid_t))) = envid; // receiver
 	*((uint32_t *)(IPCSND + 2*sizeof(envid_t))) = value;
 	*((void **) (IPCSND + 2*sizeof(envid_t) + sizeof(uint32_t)))
