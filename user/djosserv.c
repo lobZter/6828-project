@@ -331,7 +331,7 @@ process_ipc_start(char *buffer)
 
 	struct ipc_pkt packet = *((struct ipc_pkt *) buffer);
 
-	if (debug) {
+//	if (debug) {
 		cprintf("New IPC packet: \n"
 			"  src_id: %x\n"
 			"  dst_id: %x\n"
@@ -339,7 +339,7 @@ process_ipc_start(char *buffer)
 			"  val: %d\n",
 			packet.pkt_src, packet.pkt_dst, packet.pkt_toalien, 
 			packet.pkt_val);
-	}
+//	}
 
 	// IPC to an alien env
 	if (packet.pkt_toalien) {
