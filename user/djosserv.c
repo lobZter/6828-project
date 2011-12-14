@@ -327,6 +327,7 @@ int
 process_ipc_start(char *buffer)
 {
 	envid_t dst;
+	struct Env *d;
 	int r;
 
 	struct ipc_pkt packet = *((struct ipc_pkt *) buffer);
@@ -361,8 +362,11 @@ process_ipc_start(char *buffer)
 			     packet.pkt_perm);
 
 	if (!r) {
-		cprintf("try send pass to %x, unsuspend\n", dst);
-		sys_env_unsuspend(dst, ENV_RUNNABLE, 0);
+		d = (struct Env *) &envs[ENVX(dst)];
+		if (d->env_status == ENV_RUNNABLE) {
+			cprintf("try send pass to %x, unsuspend\n", dst);
+			sys_env_unsuspend(dst, ENV_RUNNABLE, 0);
+		}
 	}
 
 	switch (r) {
