@@ -27,7 +27,6 @@ struct server {
 
 struct server server_map[] = { // # must match NSERVERS
 	{ 0x12bb0048, 26591 },
-//	{ 0x12bb0050, 25281 },
 	{ 0x12bb0049, 26591 },
 };
 
@@ -421,7 +420,6 @@ try_send_lease(envid_t envid, void *thisenv)
 		if ((r = put_lease(envid, sid)) >= 0) {
 			// Set own ip ports
 			e.env_hostsid = get_my_sid();
-
 			// Try sending env
 			r = send_env(&e, thisenv, sid);
 		}
@@ -565,7 +563,7 @@ send_ipc_req(struct ipc_pkt *packet, int sid)
 			return -E_INVAL;
 		case -E_FAIL:
 			return -E_BAD_ENV;
-		}
+/*		}
 
 		if (r < 0) continue;
 
@@ -578,7 +576,7 @@ send_ipc_req(struct ipc_pkt *packet, int sid)
 			return -E_BAD_ENV;
 		case -E_BAD_REQ:
 			return -E_INVAL;
-		case 0:
+*/		case 0:
 			return 0;
 		default:
 			continue;
