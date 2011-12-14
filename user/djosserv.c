@@ -294,7 +294,7 @@ process_done_lease(char *buffer)
 	// Change status to ENV_RUNNABLE
 	// We have transfered all required state so can start executing
 	// leased env now.
-	if (sys_env_set_status(lease_map[i].dst, ENV_RUNNABLE) < 0) {
+	if (sys_env_unsuspend(lease_map[i].dst, ENV_RUNNABLE, 0) < 0) {
 		return -E_FAIL;
 	}
 
