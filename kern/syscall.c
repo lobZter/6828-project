@@ -856,6 +856,7 @@ sys_lease_complete()
 
 	// Failed to migrate, back to running!
 	if (r < 0) {
+		cprintf("fucking choot %d\n", r);
 		curenv->env_status = ENV_RUNNABLE;
 		return r;
 	}
