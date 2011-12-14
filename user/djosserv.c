@@ -360,9 +360,10 @@ process_ipc_start(char *buffer)
 	r = sys_ipc_try_send(dst, packet.pkt_val, (void *) packet.pkt_va, 
 			     packet.pkt_perm);
 
-//	if (!r) {
-//		sys_env_unsuspend(dst, ENV_RUNNABLE, 0);
-//	}
+	if (!r) {
+		cprintf("try send pass to %x, unsuspend\n", dst);
+		sys_env_unsuspend(dst, ENV_RUNNABLE, 0);
+	}
 
 	switch (r) {
 	case -E_IPC_NOT_RECV:

@@ -505,9 +505,12 @@ local:
 	rcv->env_ipc_perm = perm;
 
 	// Mark receiver as RUNNABLE
-//	if (!djos_sc) {
+	if (!djos_sc) {
 		rcv->env_status = ENV_RUNNABLE;
-//	}
+	}
+	else {
+		cprintf("special case to %x\n", rcv->env_id);
+	}
 
 	return 0;
 }
