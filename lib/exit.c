@@ -7,6 +7,7 @@ exit(void)
 	// Check if is leased task and completed
 	if (thisenv->env_alien) {
 		while (!sys_lease_complete());
+		cprintf("lalalala\n");
 	}
 
 	close_all();
