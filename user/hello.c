@@ -3,15 +3,15 @@
 void
 umain(int argc, char **argv)
 {
-	int n = 3;
+	int n = 2;
 	int k = 2;
 	int id, val1, val2, m = 0;
 
-	while (n > 0) {
-		if (n == 1) {
+	while (n >= 0) {
+		if (n == 0) {
 			cprintf("==> (%x) I am env %d.\n", 
 				thisenv->env_id, 1);
-			ipc_send(thisenv->env_parent_id, 2, NULL, 0);
+			ipc_send(thisenv->env_parent_id, k, NULL, 0);
 			exit();
 		}
 
@@ -43,11 +43,11 @@ umain(int argc, char **argv)
 	cprintf("===> (%x) I am env %d.\n", thisenv->env_id, m);
 	val1 = ipc_recv(NULL, NULL, NULL);
 	val2 = ipc_recv(NULL, NULL, NULL);
-	cprintf("===> (%x) %d^%d is %d.\n", thisenv->env_id, k, m, val1*val2);
+	cprintf("===> (%x) %d^2^%d is %d.\n", thisenv->env_id, k, m, val1*val2);
 
 	if (thisenv->env_parent_id != 0) {
 		ipc_send(thisenv->env_parent_id, val2*val1, NULL, 0);
-		cprintf("===> (%x) I sent %d^%d! to %x.\n", 
+		cprintf("===> (%x) I sent %d^2^%d! to %x.\n", 
 			thisenv->env_id, k, m, 
 			thisenv->env_parent_id);
 	}
