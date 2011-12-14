@@ -202,12 +202,13 @@ process_page_req(char *buffer)
 	src_id = *((envid_t *) buffer);
 	buffer += sizeof(envid_t);
 
-	dst_id = 0;
+//	dst_id = 0;
 
 	// Check lease map
 	if ((i = find_lease(src_id)) < 0) {
-		bypass = 1;
-		goto bypass;
+//		bypass = 1;
+//		goto bypass;
+		return -E_FAIL;
 	}
 	dst_id = lease_map[i].dst;
 
@@ -233,7 +234,7 @@ bypass:
 	ipc = *((envid_t *) buffer);
 	buffer += sizeof(envid_t);
 
-	if (ipc) {
+/*	if (ipc) {
 		envid_t src = ipc;
 		envid_t dst = src_id;
 		struct Env *d;
@@ -257,7 +258,7 @@ bypass:
 	else {
 		if (bypass) return -E_FAIL;
 	}
-
+*/
 	// Read *chunk/split* id, 0 <= i <= 3 (four 1024 byte chunks)
 	i = *buffer;
 	buffer++;
