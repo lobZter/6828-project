@@ -568,7 +568,7 @@ send_ipc_req(struct ipc_pkt *packet, int sid)
 		if (r < 0) continue;
 
 		// Send page
-		if (packet->pkt_va) {
+		if (packet->pkt_va != UTOP) {
 			r = send_page_req(packet->pkt_dst, packet->pkt_va, 
 					  packet->pkt_perm, packet->pkt_src, 
 					  sid);
