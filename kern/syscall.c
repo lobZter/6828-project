@@ -503,11 +503,13 @@ next:
 		snd = &envs[ENVX(rcv->env_ipc_from)];
 		if (snd->env_status == ENV_LEASED && 
 		    rcv->env_ipc_dstva) {
-			sys_page_alloc(rcv->env_id, rcv->env_ipc_dstva, 
+			r = sys_page_alloc(rcv->env_id, rcv->env_ipc_dstva, 
 				       PTE_U|PTE_P|PTE_W);
-			sys_copy_mem(rcv->env_id, rcv->env_ipc_dstva, 
+			cprintf("-> %d\n", r);
+			r = sys_copy_mem(rcv->env_id, rcv->env_ipc_dstva, 
 				     (void*)(DJOSTEMP + sizeof(envid_t)),
 				     PTE_U|PTE_P|PTE_W, 1);
+			cprintf("---> %d\n", r);
 		}	
 	}
 	else {
