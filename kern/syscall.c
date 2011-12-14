@@ -505,9 +505,11 @@ local:
 	rcv->env_ipc_perm = perm;
 
 	// Mark receiver as RUNNABLE
-//	if (!djos_sc) {
-		rcv->env_status = ENV_RUNNABLE;
-//	}
+	if (djos_sc) {
+		cprintf("BOOM %x %x %x\n", curenv->envid, rcv->env_id, 
+			rcv->env_ipc_from);
+	}
+	rcv->env_status = ENV_RUNNABLE;
 
 	return 0;
 }

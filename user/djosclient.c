@@ -502,7 +502,7 @@ send_ipc_start(struct ipc_pkt *packet, envid_t src_id, int sid)
 	memmove((void *) (buffer + 1), 
 		(void *) packet, sizeof(struct ipc_pkt));
 
-//	if (debug){
+	if (debug){
 		cprintf("Sending IPC Start: \n"
 			"  src_id: %x\n"
 			"  dst_id: %x\n"
@@ -510,7 +510,7 @@ send_ipc_start(struct ipc_pkt *packet, envid_t src_id, int sid)
 			"  toalien?: %d\n",
 			packet->pkt_src, packet->pkt_dst, packet->pkt_val,
 			packet->pkt_toalien);
-//	}
+	}
 	
 	// Copy 1024 bytes of data to buffer
 	if (packet->pkt_va < UTOP) {
