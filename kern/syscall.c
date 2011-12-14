@@ -467,9 +467,7 @@ djos:
 
         // Failed to migrate, back to running!
         if (r < 0) {
-		if (djos_sc) {
-			curenv->env_status = ENV_RUNNABLE;
-		}
+                curenv->env_status = ENV_RUNNABLE;
                 return r;
         }
 
@@ -511,10 +509,10 @@ local:
 
 	rcv->env_ipc_perm = perm;
 
-//	if (djos_sc) {
+	if (djos_sc) {
 		// Mark receiver as RUNNABLE
 		rcv->env_status = ENV_RUNNABLE;
-//	}
+	}
 
 	return 0;
 }
