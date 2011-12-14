@@ -668,11 +668,11 @@ int // Only copies 1024 bytes! server and client call
 sys_copy_mem(envid_t env_id, void* addr, void* buf, int perm, bool frombuf)
 {
 	void *pgva = (void *) ROUNDDOWN(addr, PGSIZE);
-	cprintf("la=====<\n");
+
 	if (sys_page_map(env_id, pgva, curenv->env_id, (void *) UTEMP, 
 			 perm) < 0) 
 		return -E_INVAL;
-		cprintf("lalalal\n");
+
 	if (frombuf) {
 		memmove((void *) (UTEMP + PGOFF(addr)), buf, 1024);
 	}
