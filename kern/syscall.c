@@ -401,8 +401,6 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	// Is alien trying to send ipc back to home?
 	if (curenv->env_alien && 
 	    ((envid & 0xfff00000) == (curenv->env_hosteid & 0xfff00000))) {
-		cprintf("Case 1 (A) DJOS IPC curenv %x, rcv %x.\n", 
-			curenv->env_id, envid);
 		toalien = 0;
 		goto djos;
 	}
@@ -420,8 +418,6 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 
 	// Is receiver leased?
 	if (rcv->env_status == ENV_LEASED) {
-		cprintf("Case 2 (A) DJOS IPC curenv %x, rcv %x.\n", 
-			curenv->env_id, envid);
 		toalien = 1;
 		goto djos;
 	}
