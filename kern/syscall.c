@@ -444,7 +444,7 @@ djos:
 
         // Put data in temp page
 	if (curenv->env_type == ENV_TYPE_JDOSS) {
-		rcv->env_ipc_from = *((envid_t *)(DJOSTEMP)); // sender
+		*((envid_t *) IPCSND) = *((envid_t *)(DJOSTEMP)); // sender
 	}
 	else {
 		*((envid_t *) IPCSND) = curenv->env_id; // sender
