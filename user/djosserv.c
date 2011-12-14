@@ -359,7 +359,7 @@ process_ipc_start(char *buffer)
 
 	r = sys_ipc_try_send(dst, packet.pkt_val, (void *) packet.pkt_va, 
 			     packet.pkt_perm);
-
+	cprintf("sys_ipc_try_send returned %d\n", r);
 	switch (r) {
 	case -E_IPC_NOT_RECV:
 		return -E_NO_IPC;

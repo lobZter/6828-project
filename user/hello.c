@@ -11,7 +11,7 @@ umain(int argc, char **argv)
 		sys_yield();
 	}
 
-	if (id) {
+	if (!id) {
 		cprintf("===> Hello World! I am child.\n");
 		val = ipc_recv(NULL, NULL, NULL);
 		cprintf("===> I got %x.\n", val);
