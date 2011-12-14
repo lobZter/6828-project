@@ -574,7 +574,7 @@ try_send_ipc(uintptr_t va)
 					 sizeof(unsigned)));
 
 	// Don't allow sending pages right now!
-	packet.pkt_va = UTOP;
+//	packet.pkt_va = UTOP;
 
 	// Get envid from ipc *value*, check env exists
 	s = (struct Env *) &envs[ENVX(packet.pkt_src)];
