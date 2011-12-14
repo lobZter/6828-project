@@ -477,7 +477,7 @@ try_send_lease_completed(envid_t envid)
 		r = -E_FAIL;
 		goto end;
 	}
-
+	cprintf("r is %d\n", r);
 end:
 	if (r < 0) {
 		cprintf("Complete lease to server failed! Aborting...\n");
