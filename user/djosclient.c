@@ -563,7 +563,7 @@ send_ipc_req(struct ipc_pkt *packet, int sid)
 			return -E_INVAL;
 		case -E_FAIL:
 			return -E_BAD_ENV;
-/*		}
+		}
 
 		if (r < 0) continue;
 
@@ -576,7 +576,7 @@ send_ipc_req(struct ipc_pkt *packet, int sid)
 			return -E_BAD_ENV;
 		case -E_BAD_REQ:
 			return -E_INVAL;
-*/		case 0:
+		case 0:
 			return 0;
 		default:
 			continue;
