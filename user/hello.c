@@ -6,7 +6,7 @@ umain(int argc, char **argv)
 	int n = 2;
 	int id, val, m;
 
-	while (n > 1) {
+	while (n > 0) {
 		if (n == 1) {
 			cprintf("==> (%x) I am env %d.\n", 
 				thisenv->env_id, 1);
@@ -19,13 +19,14 @@ umain(int argc, char **argv)
 		if (!id) {
 			while (sys_migrate(&thisenv) < 0) {
 				sys_yield();
-			}		
+			}
+			n--;
+			continue;
 		}
 		else {
 			m = n;
 			break;
 		}
-		n--;
 	}
 
 	cprintf("===> (%x) I am env %d.\n", thisenv->env_id, m);
