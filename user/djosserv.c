@@ -449,6 +449,7 @@ process_request(char *buffer)
 void
 issue_reply(int sock, int status, envid_t env_id)
 {
+	cprintf("lalala\n");
 	// For now only send status code back
 	if (debug) {
 		cprintf("Sending response: %d, %x\n", status, env_id);
