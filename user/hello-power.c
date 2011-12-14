@@ -10,7 +10,7 @@ umain(int argc, char **argv)
 	while (n >= 0) {
 		if (n == 0) {
 			cprintf("==> (%x) I am env %d.\n", 
-				thisenv->env_id, 1);
+				thisenv->env_id, 0);
 			ipc_send(thisenv->env_parent_id, k, NULL, 0);
 			exit();
 		}
