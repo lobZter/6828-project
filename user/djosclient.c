@@ -516,6 +516,7 @@ send_ipc_start(struct ipc_pkt *packet, envid_t src_id, int sid)
 		r = sys_copy_mem(src_id, (void *) packet->pkt_va,  
 				 (buffer + 1 + sizeof(struct ipc_pkt)), 
 				  PTE_U | PTE_P, 0);
+		cprintf("copies ipc to buffer %d\n", r);
 		if (r < 0) return r;		
 	}
 

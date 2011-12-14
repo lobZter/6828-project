@@ -1,42 +1,40 @@
 #include <inc/lib.h>
 
+char s[] = "Hello World!";
+
 void
 umain(int argc, char **argv)
 {
-	int n = 5;
-	int id, val, m = 0;
+	int r, id;
+	int val;
 
-	while (n > 0) {
-		if (n == 1) {
-			cprintf("==> (%x) I am env %d.\n", 
-				thisenv->env_id, 1);
-			ipc_send(thisenv->env_parent_id, 1, NULL, 0);
-			exit();
+	id = fork();
+
+	if (!id) {
+		while (sys_migrate(&thisenv) < 0) {
+			sys_yield();
 		}
 
-		id = fork();
+		cprintf("===> (%x) I am child.\n", thisenv->env_id);
+		r = sys_page_alloc(0, (void *) (USTACKTOP - 2*PGSIZE), 
+				   PTE_U | PTE_P | PTE_W);
+		memmove((void *) (USTACKTOP - 2*PGSIZE), (void *) s, 
+			12);
 
-		if (!id) {
-			while (sys_migrate(&thisenv) < 0) {
-				sys_yield();
-			}
-			n--;
-			continue;
-		}
-		else {
-			m = n;
-			break;
-		}
+		ipc_send(thisenv->env_parent_id, 12, 
+			 (void *) (USTACKTOP - 2*PGSIZE),
+			 PTE_U|PTE_P|PTE_W);
+
+		cprintf("===> (%x) I sent Hello World! to (%x).\n", 
+			thisenv->env_id, thisenv->env_parent_id);
 	}
-
-	cprintf("===> (%x) I am env %d.\n", thisenv->env_id, m);
-	val = ipc_recv(NULL, NULL, NULL);
-	cprintf("===> (%x) %d! is %d.\n", thisenv->env_id, m, m*val);
-
-	if (thisenv->env_parent_id != 0) {
-		ipc_send(thisenv->env_parent_id, m*val, NULL, 0);
-		cprintf("===> (%x) I sent %d! to %x.\n", 
-			thisenv->env_id, m, 
-			thisenv->env_parent_id);
+	else {
+		cprintf("===> (%x) I am parent.\n", thisenv->env_id);
+		val = ipc_recv(NULL, (void *) (USTACKTOP - 2*PGSIZE), NULL);
+		cprintf("===> (%x) Got byte string of length %d.\n", 
+			thisenv->env_id, val);
+		cprintf("===> (%x) String is \n", thisenv->env_id);
+		sys_cputs((char *) (USTACKTOP - 2*PGSIZE), val);
+		cprintf("\n");
 	}
 }
