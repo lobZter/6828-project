@@ -453,7 +453,7 @@ djos:
 	*((bool *) (IPCSND + 2*sizeof(envid_t)+ sizeof(uint32_t) +
 		    sizeof (void *) + sizeof(unsigned))) = toalien;
 
-	cprintf("BOOM %x %x\n", curenv->env_id, envid);
+	cprintf("BOOM %x %x %d\n", curenv->env_id, envid, djos_sc);
 
         // Try sending dipc to jc
         r = sys_dipc_try_send(CLIENT_SEND_IPC, (void *) IPCSND);
