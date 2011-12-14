@@ -443,11 +443,9 @@ process_ipc_done(char *buffer)
 	}
 
 	d = (struct Env *) &envs[ENVX(dst)];
-	cprintf("BOOM %x %x -- %x %x\n", d->env_ipc_from, packet.pkt_src,
-		d->env_id,packet.pkt_dst);
+
 	// Check ipc_from field
-	if (d->env_ipc_from != packet.pkt_src ||
-	    d->env_id != packet.pkt_dst) {
+	if (d->env_ipc_from != packet.pkt_src)
 		return -E_BAD_REQ;
 	}
 
