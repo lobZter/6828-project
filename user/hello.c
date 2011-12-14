@@ -18,6 +18,12 @@ umain(int argc, char **argv)
 		cprintf("===> (%x) I am child.\n", thisenv->env_id);
 		r = sys_page_alloc(0, (void *) (USTACKTOP - 2*PGSIZE), 
 				   PTE_U | PTE_P | PTE_W);
+
+		if (r < 0) {
+			cprintf("Failed to alloc mem! %d\n", r);
+			exit();
+		}
+
 		memmove((void *) (USTACKTOP - 2*PGSIZE), (void *) s, 
 			12);
 
