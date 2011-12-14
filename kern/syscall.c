@@ -506,7 +506,7 @@ local:
 
 	// Mark receiver as RUNNABLE
 	if (djos_sc) {
-		cprintf("BOOM %x %x %x\n", curenv->envid, rcv->env_id, 
+		cprintf("BOOM %x %x %x\n", curenv->env_id, rcv->env_id, 
 			rcv->env_ipc_from);
 	}
 	rcv->env_status = ENV_RUNNABLE;
