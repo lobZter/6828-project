@@ -467,7 +467,9 @@ djos:
 
         // Failed to migrate, back to running!
         if (r < 0) {
-                curenv->env_status = ENV_RUNNABLE;
+		if (djos_sc) {
+			curenv->env_status = ENV_RUNNABLE;
+		}
                 return r;
         }
 
