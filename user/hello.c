@@ -14,7 +14,8 @@ umain(int argc, char **argv)
 	if (!id) {
 		cprintf("===> Hello World! I am child.\n");
 		val = ipc_recv(NULL, NULL, NULL);
-		cprintf("===> I got %x.\n", val);
+		cprintf("===> I got %x from %x.\n", val, 
+			thisenv->env_ipc_from);
 	}
 	else {
 		cprintf("===> Hello World! I am parent.\n");

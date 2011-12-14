@@ -443,7 +443,12 @@ djos:
         sys_page_alloc(curenv->env_id, (void *) IPCSND, PTE_U|PTE_P|PTE_W);
 
         // Put data in temp page
-        *((envid_t *) IPCSND) = curenv->env_id; // sender
+	if (curenv->type == ENV_TYPE_JOSS) {
+		rcv->env_ipc_from = *((envid_t *)(DJOSTEMP)); // sender
+	}
+	else {
+		*((envid_t *) IPCSND) = curenv->env_id; // sender
+	}
         *((envid_t *)(IPCSND + sizeof(envid_t))) = envid; // receiver
 	*((uint32_t *)(IPCSND + 2*sizeof(envid_t))) = value;
 	*((void **) (IPCSND + 2*sizeof(envid_t) + sizeof(uint32_t)))
@@ -452,8 +457,6 @@ djos:
 			sizeof (void *))) = perm;
 	*((bool *) (IPCSND + 2*sizeof(envid_t)+ sizeof(uint32_t) +
 		    sizeof (void *) + sizeof(unsigned))) = toalien;
-
-	cprintf("BOOM %x %x %d\n", curenv->env_id, envid, djos_sc);
 
         // Try sending dipc to jc
         r = sys_dipc_try_send(CLIENT_SEND_IPC, (void *) IPCSND);
@@ -506,10 +509,6 @@ local:
 	rcv->env_ipc_perm = perm;
 
 	// Mark receiver as RUNNABLE
-	if (djos_sc) {
-		cprintf("BOOM %x %x %x\n", curenv->env_id, rcv->env_id, 
-			rcv->env_ipc_from);
-	}
 	rcv->env_status = ENV_RUNNABLE;
 
 	return 0;
