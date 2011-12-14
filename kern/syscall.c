@@ -677,10 +677,9 @@ sys_copy_mem(envid_t env_id, void* addr, void* buf, int perm, bool frombuf)
 		memmove((void *) (UTEMP + PGOFF(addr)), buf, 1024);
 	}
 	else {
-		cprintf("buf %p, addr %x\n", buf, addr);
 		memmove(buf, (void *) (UTEMP + PGOFF(addr)), 1024);
 	}
-	cprintf("lol\n");
+
 	if (sys_page_unmap(curenv->env_id, (void *) UTEMP) < 0)
 		return -E_INVAL;
 
