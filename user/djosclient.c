@@ -253,7 +253,7 @@ send_lease_req(envid_t envid, void *thisenv, struct Env *env, int sid)
 }
 
 int
-send_page_req(envid_t envid, uintptr_t va, int perm, int sid)
+send_page_req(envid_t envid, uintptr_t va, int perm, envid_t from, int sid)
 {
 	int r, i, offset;
 	char buffer[PAGE_REQ_SZ];
@@ -272,6 +272,9 @@ send_page_req(envid_t envid, uintptr_t va, int perm, int sid)
 
 	*((int *) (buffer + offset)) = perm;
 	offset += sizeof(int);
+
+	*((envid_t *) (buffer + offset)) = from;
+	offset += sizeof(envid_t);
 
 	for (i = 0; i < 4; i++) {
 		*((char *) (buffer + offset)) = i;
@@ -308,7 +311,7 @@ send_pages(envid_t envid, int sid)
 			continue;
 		};
 
-		r = send_page_req(envid, addr, perm, sid);
+		r = send_page_req(envid, addr, perm, 0, sid);
 		if (r < 0) return r;
 	}
 

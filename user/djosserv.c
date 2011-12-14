@@ -196,6 +196,7 @@ process_page_req(char *buffer)
 	int i, perm, r;
 	envid_t src_id, dst_id;
 	uintptr_t va;
+	envid_t ipc;
 
 	src_id = *((envid_t *) buffer);
 	buffer += sizeof(envid_t);
@@ -205,6 +206,10 @@ process_page_req(char *buffer)
 		return -E_FAIL;
 	}
 	dst_id = lease_map[i].dst;
+
+	if (lease_map[i].status != LE_BUSY) {
+		return -E_FAIL;
+	}
 
 	// Read va to copy data on. Must be page aligned.
 	va = *((uintptr_t *) buffer);
@@ -219,6 +224,10 @@ process_page_req(char *buffer)
 		perm &= ~PTE_COW;
 		perm |= PTE_W;
 	}
+
+	// Read *ipc*
+	ipc = *((envid_t *) buffer);
+	buffer += sizeof(envid_t);
 
 	// Read *chunk/split* id, 0 <= i <= 3 (four 1024 byte chunks)
 	i = *buffer;

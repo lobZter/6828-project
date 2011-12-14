@@ -434,7 +434,6 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 
 	goto local;
 
-
 djos:
 	// DJOS IPC SEND
 
@@ -443,7 +442,13 @@ djos:
         sys_page_alloc(curenv->env_id, (void *) IPCSND, PTE_U|PTE_P|PTE_W);
 
         // Put data in temp page
-        *((envid_t *) IPCSND) = curenv->env_id; // sender
+	// Special case if IPC from JDOSC to USER
+	if (djos_sc) {
+		*((envid_t *) IPCSND) = *((envid_t *)(DJOSTEMP));
+	}
+	else {
+		*((envid_t *) IPCSND) = curenv->env_id; // sender
+	}
         *((envid_t *)(IPCSND + sizeof(envid_t))) = envid; // receiver
 	*((uint32_t *)(IPCSND + 2*sizeof(envid_t))) = value;
 	*((void **) (IPCSND + 2*sizeof(envid_t) + sizeof(uint32_t)))
