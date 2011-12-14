@@ -396,10 +396,19 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	struct Page *pp;
         int i, r;
 	bool toalien;
+	bool djos_sc = 0;
+
+	// Special case if IPC from JDOSC to USER
+	if (curenv->env_type == ENV_TYPE_JDOSS &&
+	    rcv->env_type != ENV_TYPE_NS) {
+		djos_sc = 1;
+	}
 
 	// Is alien trying to send ipc back to home?
 	if (curenv->env_alien && 
 	    ((envid & 0xfff00000) == (curenv->env_hosteid & 0xfff00000))) {
+		cprintf("Case 1 (A) DJOS IPC curenv %x, rcv %x.\n", 
+			curenv->env_id, envid);
 		toalien = 0;
 		goto djos;
 	}
@@ -490,8 +499,7 @@ local:
 	rcv->env_ipc_value = value;
 
 	// Special case if IPC from JDOSC to USER
-	if (curenv->env_type == ENV_TYPE_JDOSS &&
-	    rcv->env_type != ENV_TYPE_NS) {
+	if (djos_sc) {
 		rcv->env_ipc_from = *((envid_t *)(DJOSTEMP));
 	}
 	else {
