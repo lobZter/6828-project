@@ -10,7 +10,7 @@
 #define LEASE_COMP_SZ (1 + sizeof(envid_t)) 
 #define IPC_START_SZ (1 + sizeof(struct ipc_pkt))
 
-int gsid; // server id
+int gsid = 0; // server id
 
 struct lease_entry {
 	envid_t env_id;
@@ -26,8 +26,8 @@ struct server {
 
 struct server server_map[] = { // # must match NSERVERS
 	{ 0x12bb0049, 26591 },
-	{ 0x12bb0048, 26591 },
 	{ 0x12bb0050, 25281 },
+	{ 0x12bb0048, 26591 },
 };
 
 static void
