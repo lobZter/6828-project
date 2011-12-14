@@ -398,8 +398,6 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	bool toalien;
 	bool djos_sc = 0;
 
-	cprintf("getting try_send to %x\n", envid);
-
 	// Is alien trying to send ipc back to home?
 	if (curenv->env_alien && 
 	    ((envid & 0xfff00000) == (curenv->env_hosteid & 0xfff00000))) {
@@ -418,6 +416,11 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	if (curenv->env_type == ENV_TYPE_JDOSS &&
 	    rcv->env_type != ENV_TYPE_NS) {
 		djos_sc = 1;
+	}
+
+	if (envid == 0x5201009) {
+		cprintf("getting try_send to parent %x with type %d\n", 
+			envid, rcv->env_status);
 	}
 
 	// Is receiver leased?
