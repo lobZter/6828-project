@@ -74,8 +74,7 @@ struct Env {
 	int env_ipc_perm;		// Perm of page mapping received
 
 	// Distributed JOS
-	uint32_t env_hostip;            // Host IPv4 address
-	uint16_t env_hostport;          // Host port
+	int env_hostsid;                // Host SID
 	bool env_alien;                 // Alien? From another planet
 	envid_t env_hosteid;            // Host env id
 

@@ -156,9 +156,9 @@ process_start_lease(char *buffer)
 			"  env_id: %x\n"
 			"  env_parent_id: %x\n"
 			"  env_status: %x\n"
-			"  env_hostip: %x\n",
+			"  env_hostsid: %x\n",
 			req_env.env_id, req_env.env_parent_id,
-			req_env.env_status, req_env.env_hostip);
+			req_env.env_status, req_env.env_hostsid);
 	}
 
 	// Check if an entry is already in leasemap

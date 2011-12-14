@@ -637,9 +637,8 @@ sys_env_lease(struct Env *src, envid_t *dst_id)
 	e->env_ipc_from = src->env_ipc_from;
 	e->env_ipc_perm = src->env_ipc_perm;
 
-	e->env_hostip = src->env_hostip;
+	e->env_hostsid = src->env_hostsid;
 	e->env_alien = 1; // Mark as alien
-	e->env_hostport = src->env_hostport;
 
 	e->env_hosteid = src->env_hosteid;
 
