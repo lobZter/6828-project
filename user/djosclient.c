@@ -26,7 +26,7 @@ struct server {
 
 struct server server_map[] = { // # must match NSERVERS
 	{ 0x12380021, 26591 },
-	{ 0x12bb001f, 26591 },
+	{ 0x1238001f, 26591 },
 };
 
 static void
