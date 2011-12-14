@@ -492,7 +492,7 @@ end:
 int
 send_ipc_start(struct ipc_pkt *packet, envid_t src_id, int sid)
 {
-	char buffer[IPC_START_SZ];
+	char buffer[IPC_START_SZ + 1024];
 	int r;
 
 	// Clear buffer
@@ -520,7 +520,7 @@ send_ipc_start(struct ipc_pkt *packet, envid_t src_id, int sid)
 		if (r < 0) return r;		
 	}
 
-	return send_buff(buffer, IPC_START_SZ, sid);
+	return send_buff(buffer, IPC_START_SZ + 1024, sid);
 }
 
 int
