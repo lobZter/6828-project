@@ -612,7 +612,9 @@ ipc_done:
 	// If ipc failed, then set eax to r to indicate failure
 	// And mark ENV_RUNNABLE
 	if (r < 0) {
-		cprintf("IPC to server failed! Aborting...\n");
+		if (r != -E_IPC_NOT_RECV) {
+			cprintf("IPC to server failed! Aborting...\n");
+		}
 		sys_env_unsuspend(s->env_id, ENV_RUNNABLE, r);
 	}
 	else {
