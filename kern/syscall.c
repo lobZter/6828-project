@@ -398,6 +398,8 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	bool toalien;
 	bool djos_sc = 0;
 
+	cprintf("getting try_send to %x\n", envid);
+
 	// Is alien trying to send ipc back to home?
 	if (curenv->env_alien && 
 	    ((envid & 0xfff00000) == (curenv->env_hosteid & 0xfff00000))) {
