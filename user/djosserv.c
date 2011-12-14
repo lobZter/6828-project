@@ -443,18 +443,19 @@ process_ipc_done(char *buffer)
 	}
 
 	d = (struct Env *) &envs[ENVX(dst)];
-	cprintf("BOOM\n");
+	cprintf("BOOM %x %x -- %x %x\n", d->env_ipc_from, packet.pkt_src,
+		d->env_id,packet.pkt_dst);
 	// Check ipc_from field
 	if (d->env_ipc_from != packet.pkt_src ||
 	    d->env_id != packet.pkt_dst) {
 		return -E_BAD_REQ;
 	}
-	cprintf("BANG\n");
+
 	// Rcv should not be receiving
 	if (d->env_ipc_recving) {
 		return -E_BAD_REQ;
 	}
-	cprintf("BLAH\n");
+
 	// IPC is complete, mark as runnable
 	r = sys_env_set_status(dst, ENV_RUNNABLE);
 
