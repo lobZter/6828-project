@@ -489,7 +489,7 @@ local:
 
 	// Special case if IPC from JDOSC to USER
 	if (curenv->env_type == ENV_TYPE_JDOSS &&
-	    rcv->env_alien) {
+	    rcv->env_type != ENV_TYPE_NS) {
 		rcv->env_ipc_from = *((envid_t *)(DJOSTEMP));
 	}
 	else {
