@@ -8,7 +8,7 @@ exit(void)
 	if (thisenv->env_alien) {
 		while (sys_lease_complete() < 0);
 	}
-	cprintf("ooo\n");
+
 	close_all();
 	sys_env_destroy(0);
 }
