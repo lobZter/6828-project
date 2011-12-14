@@ -197,20 +197,24 @@ process_page_req(char *buffer)
 	envid_t src_id, dst_id;
 	uintptr_t va;
 	envid_t ipc;
+	bool bypass = 0;
 
 	src_id = *((envid_t *) buffer);
 	buffer += sizeof(envid_t);
 
+	dst_id = 0;
+
 	// Check lease map
 	if ((i = find_lease(src_id)) < 0) {
-		return -E_FAIL;
+		bypass = 1;
+		goto bypass;
 	}
 	dst_id = lease_map[i].dst;
 
 	if (lease_map[i].status != LE_BUSY) {
 		return -E_FAIL;
 	}
-
+bypass:
 	// Read va to copy data on. Must be page aligned.
 	va = *((uintptr_t *) buffer);
 	buffer += sizeof(uintptr_t);
@@ -225,9 +229,34 @@ process_page_req(char *buffer)
 		perm |= PTE_W;
 	}
 
-	// Read *ipc*
+	// Read *ipc* from
 	ipc = *((envid_t *) buffer);
 	buffer += sizeof(envid_t);
+
+	if (ipc) {
+		envid_t src = ipc;
+		envid_t dst = src_id;
+		struct Env *d;
+		int j;
+		for (j = 0; j < SLEASES; j++) {
+			if (lease_map[j].dst == dst) {
+				dst = lease_map[j].dst;
+				break;
+			}
+		}
+
+		d = (struct Env *) &envs[ENVX(dst)];
+		if (d->env_id != dst ||
+		    d->env_ipc_from != src ||
+		    d->env_ipc_recving) {
+			return -E_BAD_REQ;
+		}
+
+		dst_id = dst;
+	}
+	else {
+		if (bypass) return -E_FAIL;
+	}
 
 	// Read *chunk/split* id, 0 <= i <= 3 (four 1024 byte chunks)
 	i = *buffer;

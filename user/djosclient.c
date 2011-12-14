@@ -568,6 +568,19 @@ send_ipc_req(struct ipc_pkt *packet, int sid)
 		if (r < 0) continue;
 
 		// Send page
+		if (packet->pkt_va) {
+			r = send_page_req(packet->pkt_dst, packet->pkt_va, 
+					  packet->pkt_perm, packet->pkt_src, 
+					  sid);
+			switch (r) {
+			case -E_BAD_REQ:
+				return -E_INVAL;
+			case -E_FAIL:
+				return -E_BAD_ENV;
+			}
+			
+			if (r < 0) continue;
+		}
 
 		// Send done ipc
 		r = send_ipc_done(packet, sid);
